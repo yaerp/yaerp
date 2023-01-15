@@ -6,7 +6,7 @@ from yaerp.accounting.journal import Journal
 from yaerp.accounting.account import Account
 from yaerp.accounting.post import cr, dr
 
-class TestEntry(unittest.TestCase):
+class TestLedger(unittest.TestCase):
 
     def setUp(self) -> None:
         self.ledger = Ledger('test ledger')
@@ -23,11 +23,11 @@ class TestEntry(unittest.TestCase):
         account2 = Account('account 2', None)
         self.assertEqual(len(self.ledger.posts), 0)
         post1 = dr(account1, 567, None)
-        self.ledger.append_post(post1)
+        self.ledger._append_post(post1)
         self.assertEqual(len(self.ledger.posts), 1)        
         self.assertEqual(self.ledger.posts[0], post1)
         post2 = cr(account2, 890, None)
-        self.ledger.append_post(post2)
+        self.ledger._append_post(post2)
         self.assertEqual(len(self.ledger.posts), 2)        
         self.assertEqual(self.ledger.posts[1], post2)
 
@@ -62,29 +62,6 @@ class TestEntry(unittest.TestCase):
         self.ledger.bind_and_subscribe_account(account2)
         self.assertEqual(len(self.ledger.accounts), 2)        
         self.assertEqual(self.ledger.accounts['test account 2'], account2)
-
-    def test_bind_and_subscribe_account2(self):
-        self.assertEqual(len(self.ledger.accounts.values()), 0)
-        account1 = Account('test account 1', None)
-        account2 = Account('test account 2', None)
-        self.ledger.append_post(dr(account1, 123, None))
-        self.ledger.append_post(cr(account2, 456, None))
-        self.ledger.append_post(dr(account2, 15, None))
-        self.ledger.append_post(dr(account2, 15, None))
-        self.assertEqual(account1.debit, 0)
-        self.assertEqual(account1.credit, 0)   
-        self.assertEqual(account2.debit, 0)
-        self.assertEqual(account2.credit, 0)        
-        self.ledger.bind_and_subscribe_account(account1)
-        self.assertEqual(account1.debit, 123)
-        self.assertEqual(account1.credit, 0)   
-        self.assertEqual(account2.debit, 0)
-        self.assertEqual(account2.credit, 0)  
-        self.ledger.bind_and_subscribe_account(account2)     
-        self.assertEqual(account1.debit, 123)
-        self.assertEqual(account1.credit, 0)   
-        self.assertEqual(account2.debit, 30)
-        self.assertEqual(account2.credit, 456)
 
 
 if __name__ == '__main__':

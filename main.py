@@ -2,21 +2,44 @@ from yaerp.accounting import Ledger
 from yaerp.accounting.journal import Journal
 from yaerp.accounting.account import Account
 from yaerp.accounting.entry import Entry
-from yaerp.accounting.post import cr, dr
 from yaerp.accounting.reports.t_account import T_account
 from yaerp.reports.typesetting.columns import simultaneous_column_generator as typeset
 
 
 def run():
+
+
+
+
     ledger = Ledger('GL')
     journal = Journal('GJ', ledger)
     account100 = Account('100', ledger)
     account200 = Account('200', ledger)
 
-    entry = Entry()
-    entry.debit_records += [dr(account100, 250, None)]
-    entry.credit_records += [cr(account200, 250, None)]
-    journal.add_entry(entry)
+
+    entry = Entry(journal)
+    entry.field('date', '2022-12-30')
+    entry.debit(account100, 120)
+    entry.credit(account200, 120)
+    entry.commit()
+
+    entry = Entry(journal)
+    entry.field('date', '2023-01-03')
+    entry.debit(account100, 250)
+    entry.credit(account200, 250)
+    entry.commit()
+
+    entry = Entry(journal, )
+    entry.field('date', '2023-01-04')
+    entry.debit(account100, 300)
+    entry.credit(account200, 300)
+    entry.commit()
+
+    print(account100.get_debit(post_predicate=lambda post: '2022' in post.entry.info_fields['date']))
+    print(account100.get_debit(post_predicate=lambda post: '2023' in post.entry.info_fields['date']))
+
+    print(account200.get_credit(post_predicate=lambda post: '2022' in post.entry.info_fields['date']))
+    print(account200.get_credit(post_predicate=lambda post: '2023' in post.entry.info_fields['date']))
 
     i = 1
     c = 37

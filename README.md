@@ -1,2 +1,2 @@
 # yaerp
-Yet Another ERP
+Yet Another ERP system
