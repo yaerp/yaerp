@@ -11,6 +11,10 @@ class Journal:
         
 
     def commit_entry(self, entry):
+        self.validate_new_entry(entry) 
+        self.ledger.commit_journal_entry(self, entry)
+
+    def validate_new_entry(self, entry):
         if entry in self.accounting_entries: 
             raise RuntimeError('the Entry already exist in this Journal')  
         for debit_post in entry.debit_fields:
@@ -22,5 +26,5 @@ class Journal:
             if credit_post.entry is None:
                 raise RuntimeError('Post has no set Entry')
             elif credit_post.entry != entry:
-                raise RuntimeError('Post has set unknown Entry') 
-        self.ledger.commit_journal_entry(self, entry)
+                raise RuntimeError('Post has set unknown Entry')
+        self.ledger.validate_entry(self, entry)
