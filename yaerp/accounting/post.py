@@ -8,8 +8,10 @@ class Post:
     side: int
     entry: Any
 
-# class Post(NamedTuple):
-#     account: Any
-#     amount: int
-#     side: int
-#     entry: Any    
+@dataclass(frozen=False)
+class DraftPost:
+    account: Any
+    amount: int
+    side: int
+    entry: Any   
+
