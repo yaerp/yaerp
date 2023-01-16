@@ -1,3 +1,10 @@
+from .exception import AccountingError
+
+
+class AccountError(AccountingError):
+    def __init__(self, message):
+        super().__init__(message)
+
 class Account:
     
     def __init__(self, tag: str, ledger, name = None, guid = None) -> None:
@@ -6,7 +13,7 @@ class Account:
         self.guid = guid
         self.ledger = ledger
         if self.ledger:
-            ledger.bind_and_subscribe_account(self)
+            ledger.register_account(self)
         self.posts = [] # only Ledger should modify this list
 
     ##
@@ -14,9 +21,9 @@ class Account:
     ##
     def append_post(self, post):
         if post.account != self:
-            raise RuntimeError()
+            raise AccountError('append post - failed: Post is assigned to another Account')
         if post in self.posts:
-            raise RuntimeError()
+            raise AccountError('append post - failed: Post already added')
         self.posts.append(post)
 
     ##

@@ -50,16 +50,16 @@ class TestLedger(unittest.TestCase):
     def test_bind_and_subscribe_account(self):
         self.assertEqual(len(self.ledger.accounts.values()), 0)
         account1 = Account('test account 1', None)
-        self.ledger.bind_and_subscribe_account(account1)
+        self.ledger.register_account(account1)
         self.assertEqual(len(self.ledger.accounts.values()), 1)        
         self.assertEqual(self.ledger.accounts['test account 1'], account1)
         try:
-            self.ledger.bind_and_subscribe_account(account1)
+            self.ledger.register_account(account1)
             self.fail()
         except RuntimeError:
             self.assertEqual(len(self.ledger.accounts.values()), 1)        
         account2 = Account('test account 2', None)
-        self.ledger.bind_and_subscribe_account(account2)
+        self.ledger.register_account(account2)
         self.assertEqual(len(self.ledger.accounts), 2)        
         self.assertEqual(self.ledger.accounts['test account 2'], account2)
 

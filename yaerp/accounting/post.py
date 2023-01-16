@@ -7,11 +7,3 @@ class Post:
     amount: int
     side: int
     entry: Any
-
-@dataclass(frozen=False)
-class DraftPost:
-    account: Any
-    amount: int
-    side: int
-    entry: Any   
-

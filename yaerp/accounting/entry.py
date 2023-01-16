@@ -2,7 +2,12 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .journal import Journal
-from .post import Post, DraftPost
+from .post import Post
+from .exception import AccountingError
+
+class EntryError(AccountingError):
+    def __init__(self, message):
+        super().__init__(message)
 
 @dataclass(frozen=False)
 class Entry:
@@ -27,23 +32,19 @@ class Entry:
         self.info_fields[key] = value
 
     def debit(self, account, amount):
-        self.debit_fields.append(DraftPost(account, amount, 0, self))  
+        self.debit_fields.append(Post(account, amount, 0, self))  
 
     def credit(self, account, amount):
-        self.credit_fields.append(DraftPost(account, amount, 1, self))
-
-    def is_valid(self):
-        try:
-            self.journal.validate_new_entry(self)
-            return True, None
-        except RuntimeError:
-            return False
+        self.credit_fields.append(Post(account, amount, 1, self))
 
     def commit(self):
-        if self.is_valid():
-            # convert drafts to posts
-            for idx, draft in enumerate(self.debit_fields):
-                self.debit_fields[idx] = Post(draft.account, draft.amount, 0, self)
-            for idx, draft in enumerate(self.credit_fields):
-                self.credit_fields[idx] = Post(draft.account, draft.amount, 1, self)
-            self.journal.commit_entry(self)
+        if not self.is_balanced():
+            raise EntryError('commit Entry failed: the Entry is not balanced')
+        # create new Posts if current ones are foreign
+        for idx, draft in enumerate(self.debit_fields):
+            if draft.entry != self:
+                self.debit_fields[idx] = (draft.account, draft.amount, 0, self)
+        for idx, draft in enumerate(self.credit_fields):
+            if draft.entry != self:
+                self.credit_fields[idx] = (draft.account, draft.amount, 1, self)
+        self.journal.commit_entry(self)

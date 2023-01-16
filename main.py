@@ -1,4 +1,6 @@
+from types import TracebackType
 from yaerp.accounting import Ledger
+from yaerp.accounting.exception import AccountingError
 from yaerp.accounting.journal import Journal
 from yaerp.accounting.account import Account
 from yaerp.accounting.entry import Entry
@@ -8,14 +10,10 @@ from yaerp.reports.typesetting.columns import simultaneous_column_generator as t
 
 def run():
 
-
-
-
     ledger = Ledger('GL')
     journal = Journal('GJ', ledger)
     account100 = Account('100', ledger)
     account200 = Account('200', ledger)
-
 
     entry = Entry(journal)
     entry.field('date', '2022-12-30')

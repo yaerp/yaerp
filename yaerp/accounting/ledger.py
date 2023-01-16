@@ -1,3 +1,10 @@
+from .exception import AccountingError
+
+
+class LedgerError(AccountingError):
+    def __init__(self, message):
+        super().__init__(message)
+
 class Ledger:
 
     def __init__(self, tag: str):
@@ -7,7 +14,7 @@ class Ledger:
         self.journals = {}
 
     def commit_journal_entry(self, journal, entry):
-        self.validate_entry(journal, entry)         
+        self._validate_entry(journal, entry)         
         for dr in entry.debit_fields:
             self._append_post(dr)
         for cr in entry.credit_fields:
@@ -15,9 +22,9 @@ class Ledger:
         journal.accounting_entries.append(entry)
         
 
-    def validate_entry(self, journal, entry):
-        if not entry.is_balanced():
-            raise RuntimeError('not balanced Entry')
+    def _validate_entry(self, journal, entry):
+        if not self._is_balanced_entry(entry):
+            raise LedgerError('validate Entry failed: not balanced Entry')
         for dr in entry.debit_fields:
             self._validate_post(journal, dr)
         for cr in entry.credit_fields:
@@ -29,32 +36,44 @@ class Ledger:
 
     def _validate_post(self, journal, post):
         if post.account is None:
-            raise RuntimeError('Account is None')
+            raise LedgerError('validate Post - failed: Account None')
         if post.account not in self.accounts.values():
-            raise RuntimeError('unknown Account')
+            raise LedgerError('validate Post - failed: unknown Account')
         if post.entry is None:
-            raise RuntimeError('Post has not set parent Entry') 
+            raise LedgerError('validate Post - failed: empty parent Entry')
         if post.entry.journal is None:
-            raise RuntimeError('Entry has not set parent Journal')           
+            raise LedgerError('validate Post - failed: empty parent Journal')           
         if post.entry.journal != journal:
-            raise RuntimeError('incorrect Journal')
+            raise LedgerError('validate Post - failed: Entry is assigned to another Journal')
         if post.entry.journal not in self.journals.values():
-            raise RuntimeError('Entry has unknown Journal') 
+            raise LedgerError('validate Post - failed: Journal is assigned to another Ledger') 
         if post in self.posts:
-            raise RuntimeError('Post already exist in Ledger')       
+            raise LedgerError('validate Post - failed: Post already added')       
 
-    def bind_and_subscribe_account(self, account):
+    def _is_balanced_entry(self, entry):
+        result_dt, result_ct = 0, 0
+        for dr in entry.debit_fields:
+            if dr.side != 0:
+                raise LedgerError('is balanced Entry - failed: wrong Post in debit container')
+            result_dt += dr.amount
+        for cr in entry.credit_fields:
+            if cr.side != 1:
+                raise LedgerError('is balance Entry - failed: wrong Post in debit container')
+            result_ct += cr.amount
+        return result_dt == result_ct
+
+    def register_account(self, account):
         if account is None:
-            raise RuntimeError('Account is None')            
-        if account in self.accounts.values():
-            raise RuntimeError('Account already added')
+            raise LedgerError('register Account - failed: Account is None')  
+        if account.ledger != self and account.ledger is Ledger and account in account.ledger.accounts.values():
+            raise LedgerError('register Account - failed: Account is already registered to another Ledger')         
         self.accounts[account.tag] = account
         account.ledger = self
  
     def register_journal(self, journal):
         if journal is None:
-            raise RuntimeError('Journal is None')  
-        if journal in self.journals.values():
-            raise RuntimeError('Journal already added')
+            raise LedgerError('register Journal - failed: Journal is None')  
+        if journal.ledger != self and journal.ledger is Ledger and journal in journal.ledger.journals.values():
+            raise LedgerError('register Journal - failed: Journal is already registered to another Ledger') 
         self.journals[journal.tag] = journal
         journal.ledger = self
