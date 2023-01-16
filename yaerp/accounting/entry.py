@@ -20,11 +20,11 @@ class Entry:
         result_dt, result_ct = 0, 0
         for dr in self.debit_fields:
             if dr.side != 0:
-                raise RuntimeError()
+                raise EntryError('Entry corrupted: only debit Post are allowed in this container')
             result_dt += dr.amount
         for cr in self.credit_fields:
             if cr.side != 1:
-                raise RuntimeError()
+                raise EntryError('Entry corrupted: only credit Post are allowed in this container')
             result_ct += cr.amount
         return result_dt == result_ct
 

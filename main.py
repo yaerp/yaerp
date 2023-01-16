@@ -1,6 +1,4 @@
-from types import TracebackType
 from yaerp.accounting import Ledger
-from yaerp.accounting.exception import AccountingError
 from yaerp.accounting.journal import Journal
 from yaerp.accounting.account import Account
 from yaerp.accounting.entry import Entry
@@ -33,11 +31,11 @@ def run():
     entry.credit(account200, 300)
     entry.commit()
 
-    print(account100.get_debit(post_predicate=lambda post: '2022' in post.entry.info_fields['date']))
-    print(account100.get_debit(post_predicate=lambda post: '2023' in post.entry.info_fields['date']))
+    print(account100.get_debit(predicate=lambda post: '2022' in post.entry.info_fields['date']))
+    print(account100.get_debit(predicate=lambda post: '2023' in post.entry.info_fields['date']))
 
-    print(account200.get_credit(post_predicate=lambda post: '2022' in post.entry.info_fields['date']))
-    print(account200.get_credit(post_predicate=lambda post: '2023' in post.entry.info_fields['date']))
+    print(account200.get_credit(predicate=lambda post: '2022' in post.entry.info_fields['date']))
+    print(account200.get_credit(predicate=lambda post: '2023' in post.entry.info_fields['date']))
 
     i = 1
     c = 37

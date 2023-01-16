@@ -29,19 +29,31 @@ class Account:
     ##
     ##  amount of debit Posts
     ##
-    def get_debit(self, post_predicate=None):
-        if post_predicate is None: 
-            return sum(post.amount for post in filter(
-                lambda p: p.side == 0, self.posts))
-        return sum(post.amount for post in filter(
-            post_predicate, filter(lambda p: p.side == 0, self.posts)))
+    def get_debit(self, predicate=None):
+        return sum(post.amount for post in self.post_iter(
+            dt_posts=True, predicate=predicate))
 
     ##
     ##  amount of credit Posts
     ##
-    def get_credit(self, post_predicate=None):
-        if post_predicate is None: 
-            return sum(post.amount for post in filter(
-                lambda p: p.side == 1, self.posts))
-        return sum(post.amount for post in filter(
-            post_predicate, filter(lambda p: p.side == 1, self.posts)))
+    def get_credit(self, predicate=None):
+        return sum(post.amount for post in self.post_iter(
+            ct_posts=True, predicate=predicate))
+
+    def post_iter(self, dt_posts=False, ct_posts=False, predicate=None):
+        if dt_posts and ct_posts:
+            if predicate:
+                return filter(predicate, self.posts)
+            else:
+                return iter(self.posts)
+        if dt_posts and not ct_posts:
+            if predicate:
+                return filter(predicate, filter(lambda p: p.side == 0, self.posts))
+            else:
+                return filter(lambda p: p.side == 0, self.posts)
+        if not dt_posts and ct_posts:
+            if predicate:
+                return filter(predicate, filter(lambda p: p.side == 1, self.posts))
+            else:
+                return filter(lambda p: p.side == 1, self.posts)
+        return iter([])
