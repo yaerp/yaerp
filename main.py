@@ -3,7 +3,7 @@ from yaerp.accounting.journal import Journal
 from yaerp.accounting.account import Account
 from yaerp.accounting.entry import Entry
 from yaerp.accounting.reports.t_account import T_account
-from yaerp.reports.typesetting.columns import simultaneous_column_generator as typeset
+from yaerp.report.typesetting.columns import simultaneous_column_generator as typeset
 
 
 def run():
