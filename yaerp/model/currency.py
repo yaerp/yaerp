@@ -1,6 +1,7 @@
-from .metric import Metric, MetricError
+from exception import YaerpError
+from metric import Metric
 
-class CurrencyError(MetricError):
+class CurrencyError(YaerpError):
     def __init__(self, message):
         super().__init__(message)
 

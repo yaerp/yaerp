@@ -1,33 +1,85 @@
-from .metric import MetricError
-from .quantity import Quantity
+from exception import YaerpError
+from quantity import Quantity
+from currency import Currency
 
-
-class MoneyError(MetricError):
+class MoneyError(YaerpError):
     def __init__(self, message):
         super().__init__(message)
 
 class Money(Quantity):
-    def __init__(self, amount: int, currency) -> None:
+    def __init__(self, amount_in_subunits: int, currency: Currency) -> None:
         super().__init__()
-        self.amount = amount
+        self.__raw_value = amount_in_subunits
         self.currency = currency
+
+    def __str__(self):
+        result = str(self.__raw_value)
+        if self.currency.dot_position > 0:
+            result = ''.join([result[:-self.currency.dot_position], ".", result[-self.currency.dot_position:]])
+        return result
+
+    def amount_in_subunits(self):
+        return self.__raw_value
+
+    def __abs__(self):
+        return Money(abs(self.__raw_value), currency)
+
+    def __add__(self, other):
+        if self.currency != other.currency:
+            raise MoneyError('cannot add 2 different currencies')
+        return Money(self.__raw_value + other.__raw_value, self.currency)
+
+    def __sub__(self, other):
+        if self.currency != other.currency:
+            raise MoneyError('cannot subtract 2 different currencies')
+        return Money(self.__raw_value - other.__raw_value, self.currency)
+
+    def __mul__(self, coefficient):
+        result = int(self.__raw_value * coefficient)
+        return Money(result, self.currency)
+
+    def __floordiv__(self, factor):
+        result = self.__raw_value // factor
+        return Money(result, self.currency)
+
+    def __truediv__(self, factor):
+        result = round(self.__raw_value / factor, 0)
+        return Money(result, self.currency)
+
+    def __lt__(self, other):
+        return self.__raw_value < other.__raw_value
+
+    def __le__(self, other):
+        return self.__raw_value <= other.__raw_value
+
+    def __eq__(self, other):
+        return self.__raw_value == other.__raw_value
+
+    def __ne__(self, other):
+        return self.__raw_value != other.__raw_value
+
+    def __ge__(self, other):
+        return self.__raw_value >= other.__raw_value
+
+    def __gt__(self, other):
+        return self.__raw_value > other.__raw_value
 
     def allocate(self, ratios: list) -> list:
         total = 0
         penny = self.currency.penny
         for idx, ratio in enumerate(ratios):
             total += ratios[idx]
-        reminder = self.amount
+        reminder = self.__raw_value
         parts = []
         for idx, ratio in enumerate(ratios):
-            value = self.amount * ratio // total
+            value = self.__raw_value * ratio // total
             ## round to penny (if penny is not worth 1)
             if value % penny:
                 value = (value // penny) * penny
             reminder = reminder - value            
             parts.append(value)
         if reminder < 0:
-            raise MoneyError("Money allocate process create more amount than actually got")
+            raise RuntimeError("Money allocate process create more amount than actually got")
 
         ## distribute the possible rest
         for idx, part in enumerate(parts):
@@ -37,14 +89,14 @@ class Money(Quantity):
                 continue
             elif reminder == 0:
                 break
-            raise MoneyError(f"Money allocate process failed {parts}")
+            raise RuntimeError(f"Money allocate process failed {parts}")
 
         if reminder > 0:
-            raise MoneyError("Money allocate process remains with some unallocated amount")
+            raise RuntimeError("Money allocate process remains with some unallocated amount")
         return parts
 
 if __name__ == '__main__':
-    from currency import Currency
-    currency = Currency('złoty', 'PLN', 'Polski Złoty', 'PLN', '985', 'zł', 'gr', 5)
-    money = Money(12300, currency=currency)
-    print(money.allocate([7741, 2321]))
+    currency = Currency('złoty', 'PLN', 'Polski Złoty', 'PLN', '985', 'zł', 'gr', 100)
+    money = Money(-12300, currency)
+    print(money)
+    print(abs(money+money))

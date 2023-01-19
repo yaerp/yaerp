@@ -9,7 +9,7 @@ class TestMoney(unittest.TestCase):
     def test_init_money(self):
         currency = Currency('złoty', 'PLN', 'Polski Złoty', 'PLN', '985', 'zł', 'gr', 100)
         money = Money(12300, currency) ## 123zł 00gr
-        self.assertEqual(money.amount, 12300)
+        self.assertEqual(money.__amount, 12300)
         self.assertEqual(money.currency, currency)
 
     def test_allocate(self):
@@ -45,7 +45,7 @@ class TestMoney(unittest.TestCase):
         self.assertEqual(parts[1], 9471) # 94.71 PLN 
 
         vat = (100, 23)    
-        parts = money.allocate(vat) # split gross (brutto PL) into net (netto PL) and tax (podatek VAT)
+        parts = money.allocate(vat) # split gross (brutto) into net (netto) and tax (podatek)
         self.assertEqual(parts[0], 10000) 
         self.assertEqual(parts[1], 2300) 
 
@@ -53,14 +53,24 @@ class TestMoney(unittest.TestCase):
         currency = Currency('أوقية موريتانية', 'MRU', 'Mauritanian Ouguiya', 'MRU', '929', 'أوقية', 'خمس', 5)
         money = Money(1230, currency) ## MRU 123.0
         parts = money.allocate((2,5)) # split amount into 2/7 and 5/7
-        self.assertEqual(parts[0], 3515)
-        self.assertEqual(parts[1], 8785)        
-        parts = money.allocate((5,2)) # split amount into 5/7 and 2/7
-        self.assertEqual(parts[0], 8786)
-        self.assertEqual(parts[1], 3514)  
+        self.assertEqual(parts[0], 352)
+        self.assertEqual(parts[1], 878)   
+        parts = money.allocate((5,2)) # split amount into 2/7 and 5/7
+        self.assertEqual(parts[0], 880)
+        self.assertEqual(parts[1], 350) 
 
-
-
+        money = Money(2, currency) ## 0.2 MRU, the smallest possible amount
+        parts = money.allocate((1, 1)) # "half" parts
+        self.assertEqual(parts[0], 2)
+        self.assertEqual(parts[1], 0) 
+        money = Money(4, currency) ## 0.4 MRU
+        parts = money.allocate((1, 1)) # "half" parts
+        self.assertEqual(parts[0], 2)
+        self.assertEqual(parts[1], 2) 
+        money = Money(6, currency) ## 0.4 MRU
+        parts = money.allocate((1, 1)) # "half" parts
+        self.assertEqual(parts[0], 4)
+        self.assertEqual(parts[1], 2)
 
 if __name__ == '__main__':
     unittest.main()
