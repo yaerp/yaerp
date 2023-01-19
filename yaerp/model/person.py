@@ -1,5 +1,4 @@
-from .party import Party
-from .exception import PartyError
+from .party import Party, PartyError
 
 
 class PersonError(PartyError):

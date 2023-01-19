@@ -1,4 +1,4 @@
-from metric import Metric, MetricError
+from .metric import Metric, MetricError
 
 class CurrencyError(MetricError):
     def __init__(self, message):

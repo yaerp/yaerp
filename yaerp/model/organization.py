@@ -1,5 +1,4 @@
-from .exception import PartyError
-from .party import Party
+from .party import Party, PartyError
 
 class OrganizationError(PartyError):
     def __init__(self, message):

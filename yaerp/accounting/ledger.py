@@ -14,27 +14,27 @@ class Ledger:
         self.journals = {}
 
     def commit_journal_entry(self, journal, entry):
-        self._validate_entry(journal, entry)         
+        self.__validate_entry(journal, entry)         
         for dr in entry.debit_fields:
-            self._append_post(dr)
+            self.__append_post(dr)
         for cr in entry.credit_fields:
-            self._append_post(cr)
+            self.__append_post(cr)
         journal.accounting_entries.append(entry)
         
 
-    def _validate_entry(self, journal, entry):
-        if not self._is_balanced_entry(entry):
+    def __validate_entry(self, journal, entry):
+        if not self.__is_balanced_entry(entry):
             raise LedgerError('validate Entry failed: not balanced Entry')
         for dr in entry.debit_fields:
-            self._validate_post(journal, dr)
+            self.__validate_post(journal, dr)
         for cr in entry.credit_fields:
-            self._validate_post(journal, cr)
+            self.__validate_post(journal, cr)
 
-    def _append_post(self, post):
+    def __append_post(self, post):
         self.posts.append(post)
         post.account.append_post(post)
 
-    def _validate_post(self, journal, post):
+    def __validate_post(self, journal, post):
         if post.account is None:
             raise LedgerError('validate Post - failed: Account None')
         if post.account not in self.accounts.values():
@@ -50,7 +50,7 @@ class Ledger:
         if post in self.posts:
             raise LedgerError('validate Post - failed: Post already added')       
 
-    def _is_balanced_entry(self, entry):
+    def __is_balanced_entry(self, entry):
         result_dt, result_ct = 0, 0
         for dr in entry.debit_fields:
             if dr.side != 0:

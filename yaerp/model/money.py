@@ -1,5 +1,5 @@
-from metric import MetricError
-from quantity import Quantity
+from .metric import MetricError
+from .quantity import Quantity
 
 
 class MoneyError(MetricError):
@@ -11,11 +11,6 @@ class Money(Quantity):
         super().__init__()
         self.amount = amount
         self.currency = currency
-        # self.calculate_subunit
-        # self.penny = 0
-        # self.dot_position = 0
-
-
 
     def allocate(self, ratios: list) -> list:
         total = 0

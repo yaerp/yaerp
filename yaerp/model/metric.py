@@ -1,4 +1,4 @@
-from exception import ModelError
+from .exception import ModelError
 
 class MetricError(ModelError):
     def __init__(self, message):
