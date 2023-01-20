@@ -1,6 +1,6 @@
-from exception import YaerpError
-from quantity import Quantity
-from currency import Currency
+from .exception import YaerpError
+from .quantity import Quantity
+from .currency import Currency
 
 class MoneyError(YaerpError):
     def __init__(self, message):
@@ -15,14 +15,20 @@ class Money(Quantity):
     def __str__(self):
         result = str(self.__raw_value)
         if self.currency.dot_position > 0:
-            result = ''.join([result[:-self.currency.dot_position], ".", result[-self.currency.dot_position:]])
+            result = ''.join([self.currency.alphabetic_code, "\u00A0", result[:-self.currency.dot_position], ".", result[-self.currency.dot_position:], ";"])
         return result
 
-    def amount_in_subunits(self):
+    def raw_int(self):
         return self.__raw_value
 
     def __abs__(self):
-        return Money(abs(self.__raw_value), currency)
+        return Money(abs(self.__raw_value), self.currency)
+
+    def __bool__(self):
+        return self.__raw_value.__bool__()
+
+    def __neg__(self):
+        return Money(-self.__raw_value, self.currency)
 
     def __add__(self, other):
         if self.currency != other.currency:
@@ -93,10 +99,5 @@ class Money(Quantity):
 
         if reminder > 0:
             raise RuntimeError("Money allocate process remains with some unallocated amount")
-        return parts
-
-if __name__ == '__main__':
-    currency = Currency('złoty', 'PLN', 'Polski Złoty', 'PLN', '985', 'zł', 'gr', 100)
-    money = Money(-12300, currency)
-    print(money)
-    print(abs(money+money))
+        
+        return [Money(raw_amount, self.currency) for raw_amount in parts]

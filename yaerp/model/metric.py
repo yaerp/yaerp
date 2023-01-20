@@ -1,4 +1,4 @@
-from exception import YaerpError
+from .exception import YaerpError
 
 class MetricError(YaerpError):
     def __init__(self, message):

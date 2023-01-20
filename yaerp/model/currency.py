@@ -1,5 +1,5 @@
-from exception import YaerpError
-from metric import Metric
+from .exception import YaerpError
+from .metric import Metric
 
 class CurrencyError(YaerpError):
     def __init__(self, message):
