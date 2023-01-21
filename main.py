@@ -1,3 +1,4 @@
+import locale
 from yaerp.accounting import Ledger
 from yaerp.accounting.journal import Journal
 from yaerp.accounting.account import Account
@@ -7,12 +8,17 @@ from yaerp.model.money import Money as M
 from yaerp.model.currency import Currency as C
 from yaerp.report.typesetting.columns import simultaneous_column_generator as typeset
 
-
 def run():
-    c = C('PLN', 'PLN', "Polski Złoty", 'PLN', '985', "zł", "gr", 100)
+    c = C('PLN', '985', 100, "Polish Złoty", 'zł', 'gr')
     money = M(12300, c)
     print(money)
 
+    # locale.setlocale(locale.LC_ALL, 'pl')
+    # print(locale.currency(123235534.7, international=True, grouping=True))
+
+    c = C('XAU', '959', 1, 'Gold troy ounce', 'oz')
+    money = M(12300, c)
+    print(money)
     # ledger = Ledger('GL')
     # journal = Journal('GJ', ledger)
     # account100 = Account('100', ledger)

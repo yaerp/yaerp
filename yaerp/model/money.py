@@ -7,16 +7,22 @@ class MoneyError(YaerpError):
         super().__init__(message)
 
 class Money(Quantity):
-    def __init__(self, amount_in_subunits: int, currency: Currency) -> None:
+    def __init__(self, raw_int: int, currency: Currency) -> None:
         super().__init__()
-        self.__raw_value = amount_in_subunits
+        self.__raw_value = raw_int
         self.currency = currency
 
     def __str__(self):
+        return ''.join([self.currency.symbol, "\u00A0", self.text()])
+
+    def text(self):
         result = str(self.__raw_value)
         if self.currency.dot_position > 0:
-            result = ''.join([self.currency.alphabetic_code, "\u00A0", result[:-self.currency.dot_position], ".", result[-self.currency.dot_position:], ";"])
+            return ''.join([result[:-self.currency.dot_position], ".", result[-self.currency.dot_position:]])
         return result
+
+    def __repr__(self) -> str:
+        return ''.join([self.__class__.__name__, '(', str(self.__raw_value), ', ', self.currency.__repr__(), ')'])
 
     def raw_int(self):
         return self.__raw_value
@@ -72,7 +78,7 @@ class Money(Quantity):
 
     def allocate(self, ratios: list) -> list:
         total = 0
-        penny = self.currency.penny
+        penny = self.currency.smallest_value
         for idx, ratio in enumerate(ratios):
             total += ratios[idx]
         reminder = self.__raw_value

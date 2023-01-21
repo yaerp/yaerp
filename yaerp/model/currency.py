@@ -6,20 +6,19 @@ class CurrencyError(YaerpError):
         super().__init__(message)
 
 class Currency(Metric):
-    def __init__(self, name, symbol, definition, alphabetic_code, numeric_code, unit_symbol, subunit_symbol, ratio_of_subunits_to_unit) -> None:
-        super().__init__(name, symbol, definition)
-        self.alphabetic_code = alphabetic_code
+    def __init__(self, alphabetic_code, numeric_code, ratio_of_subunits_to_unit, international_name, national_unit_symbol=None, national_subunit_symbol=None, definition=None) -> None:
+        super().__init__(international_name, alphabetic_code, definition)
         self.numeric_code = numeric_code
-        self.unit_symbol = unit_symbol
-        self.subunit_symbol = subunit_symbol
         self.ratio_of_subunits_to_unit = ratio_of_subunits_to_unit
+        self.national_unit_symbol = national_unit_symbol
+        self.national_subunit_symbol = national_subunit_symbol
         self.__calculate_subunit(self.ratio_of_subunits_to_unit)
 
     def __calculate_subunit(self, ratio_of_subunits_to_unit: int):
         for i in range(0, 19):
             if self.__is_valid_dot_position(i, ratio_of_subunits_to_unit):
                 self.dot_position = i
-                self.penny = (10 ** self.dot_position) // ratio_of_subunits_to_unit
+                self.smallest_value = (10 ** self.dot_position) // ratio_of_subunits_to_unit
                 return
         raise CurrencyError('calculate subunit failed - ratio of subunit to unit is not acceptable')
 
@@ -32,16 +31,19 @@ class Currency(Metric):
             return True
         return False 
 
+    def __str__(self) -> str:
+        return self.symbol
+
 
 if __name__ == '__main__':
     currency = Currency('złoty', 'PLN', 'Polski Złoty', 'PLN', '985', 'zł', 'gr', 100)
     print(currency.definition)    
-    print(f"1 grosz (1{currency.subunit_symbol}) = 0.0{currency.penny} {currency.alphabetic_code} (0.0{currency.penny}{currency.unit_symbol})")
-    print(f"{currency.ratio_of_subunits_to_unit} groszy ({currency.ratio_of_subunits_to_unit}{currency.subunit_symbol}) = 1.00 {currency.alphabetic_code} (1{currency.unit_symbol})")
+    print(f"1 grosz (1{currency.national_subunit_symbol}) = 0.0{currency.subunit_value} {currency.alphabetic_code} (0.0{currency.subunit_value}{currency.national_unit_symbol})")
+    print(f"{currency.ratio_of_subunits_to_unit} groszy ({currency.ratio_of_subunits_to_unit}{currency.national_subunit_symbol}) = 1.00 {currency.alphabetic_code} (1{currency.national_unit_symbol})")
     print(f"Dot pos={currency.dot_position}")   
     print()
     currency = Currency('أوقية موريتانية', 'MRU', 'Mauritanian Ouguiya', 'MRU', '929', 'أوقية', 'خمس', 5)
     print(currency.definition)
-    print(f"1 khoums ({currency.subunit_symbol} 1) = {currency.alphabetic_code} 0.{currency.penny} ({currency.unit_symbol} 0.{currency.penny})")
-    print(f"{currency.ratio_of_subunits_to_unit} khoums ({currency.subunit_symbol} {currency.ratio_of_subunits_to_unit}) = {currency.alphabetic_code} 1.0 ({currency.unit_symbol} 1.0)")
+    print(f"1 khoums ({currency.national_subunit_symbol} 1) = {currency.alphabetic_code} 0.{currency.subunit_value} ({currency.national_unit_symbol} 0.{currency.subunit_value})")
+    print(f"{currency.ratio_of_subunits_to_unit} khoums ({currency.national_subunit_symbol} {currency.ratio_of_subunits_to_unit}) = {currency.alphabetic_code} 1.0 ({currency.national_unit_symbol} 1.0)")
     print(f"Dot posiion = {currency.dot_position}")  
