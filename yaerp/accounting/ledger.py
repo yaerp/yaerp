@@ -1,79 +1,60 @@
-from .exception import AccountingError
+import yaerp.accounting.post
 
-
-class LedgerError(AccountingError):
-    def __init__(self, message):
-        super().__init__(message)
 
 class Ledger:
 
     def __init__(self, tag: str):
         self.tag = tag
         self.posts = [] # main ledger's container 
-        self.accounts = {}
-        self.journals = {}
+        self.accounts = {} # associated accounts
+        self.journals = {} # associated journals
 
     def commit_journal_entry(self, journal, entry):
         self.__validate_entry(journal, entry)         
-        for dr in entry.debit_fields:
-            self.__append_post(dr)
-        for cr in entry.credit_fields:
-            self.__append_post(cr)
+        for field in entry.fields.values():
+            if isinstance(field, yaerp.accounting.post.Post):
+                self.__append_post(field)
         journal.accounting_entries.append(entry)
         
-
     def __validate_entry(self, journal, entry):
-        if not self.__is_balanced_entry(entry):
-            raise LedgerError('validate Entry failed: not balanced Entry')
-        for dr in entry.debit_fields:
-            self.__validate_post(journal, dr)
-        for cr in entry.credit_fields:
-            self.__validate_post(journal, cr)
+        if not entry.is_balanced():
+            raise RuntimeError('not balanced Entry')
+        for field in entry.fields:
+            if isinstance(field, yaerp.accounting.post.Post):
+                self.__validate_post(journal, field)
+
+    def __validate_post(self, journal, post):
+        if post.account is None:
+            raise ValueError('post.account is None')
+        if post.account not in self.accounts.values():
+            raise ValueError('post.account not associated with this ledger')
+        if post.entry is None:
+            raise ValueError('post.entry is None')
+        if post.entry.journal is None:
+            raise ValueError('post.entry.journal is None')           
+        if post.entry.journal != journal:
+            raise ValueError('post.entry.journal should be the same as the posting journal')
+        if post.entry.journal not in self.journals.values():
+            raise ValueError('post.entry.journal not associated whith this ledger') 
+        if post in self.posts:
+            raise ValueError('post already exist in the ledger')
 
     def __append_post(self, post):
         self.posts.append(post)
         post.account.append_post(post)
 
-    def __validate_post(self, journal, post):
-        if post.account is None:
-            raise LedgerError('validate Post - failed: Account None')
-        if post.account not in self.accounts.values():
-            raise LedgerError('validate Post - failed: unknown Account')
-        if post.entry is None:
-            raise LedgerError('validate Post - failed: empty parent Entry')
-        if post.entry.journal is None:
-            raise LedgerError('validate Post - failed: empty parent Journal')           
-        if post.entry.journal != journal:
-            raise LedgerError('validate Post - failed: Entry is assigned to another Journal')
-        if post.entry.journal not in self.journals.values():
-            raise LedgerError('validate Post - failed: Journal is assigned to another Ledger') 
-        if post in self.posts:
-            raise LedgerError('validate Post - failed: Post already added')       
-
-    def __is_balanced_entry(self, entry):
-        result_dt, result_ct = 0, 0
-        for dr in entry.debit_fields:
-            if dr.side != 0:
-                raise LedgerError('is balanced Entry - failed: wrong Post in debit container')
-            result_dt += dr.amount
-        for cr in entry.credit_fields:
-            if cr.side != 1:
-                raise LedgerError('is balance Entry - failed: wrong Post in debit container')
-            result_ct += cr.amount
-        return result_dt == result_ct
-
     def register_account(self, account):
-        if account is None:
-            raise LedgerError('register Account - failed: Account is None')  
-        if account.ledger != self and account.ledger is Ledger and account in account.ledger.accounts.values():
-            raise LedgerError('register Account - failed: Account is already registered to another Ledger')         
+        if not account:
+            raise ValueError('account is None')  
+        if account.ledger and account.ledger != self:
+            raise ValueError('account already associated with an another Ledger')         
         self.accounts[account.tag] = account
         account.ledger = self
  
     def register_journal(self, journal):
-        if journal is None:
-            raise LedgerError('register Journal - failed: Journal is None')  
-        if journal.ledger != self and journal.ledger is Ledger and journal in journal.ledger.journals.values():
-            raise LedgerError('register Journal - failed: Journal is already registered to another Ledger') 
+        if not journal:
+            raise ValueError('journal is None')  
+        if journal.ledger and journal.ledger != self:
+            raise ValueError('journal already associated with an another Ledger') 
         self.journals[journal.tag] = journal
         journal.ledger = self

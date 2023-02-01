@@ -15,7 +15,7 @@ class TestEntry(unittest.TestCase):
         account1 = Account('test account 1', None)
         account2 = Account('test account 2', None)
         entry = Entry(journal=None)
-        entry.field('Title', 'Entry 1')
+        entry.info('Title', 'Entry 1')
         entry.debit(account1, 599)
         entry.credit(account1, 599)
         self.assertEqual(entry.info_fields['Title'], 'Entry 1')

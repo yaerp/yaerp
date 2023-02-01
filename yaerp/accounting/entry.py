@@ -1,50 +1,57 @@
 from dataclasses import dataclass, field
 from typing import Any
 
-from .journal import Journal
-from .post import Post
-from .exception import AccountingError
-
-class EntryError(AccountingError):
-    def __init__(self, message):
-        super().__init__(message)
+import yaerp.accounting.journal
+import yaerp.accounting.post
 
 @dataclass(frozen=False)
 class Entry:
-    journal: Journal = field(default_factory=Journal)
-    info_fields: dict = field(default_factory=dict)
-    debit_fields: list[Post] = field(default_factory=list)
-    credit_fields: list[Post] = field(default_factory=list)
+    journal: yaerp.accounting.journal.Journal = field(default_factory=yaerp.accounting.journal.Journal)
+    fields: dict = field(default_factory=dict)
 
     def is_balanced(self):
         result_dt, result_ct = 0, 0
-        for dr in self.debit_fields:
-            if dr.side != 0:
-                raise EntryError('Entry corrupted: only debit Post are allowed in this container')
-            result_dt += dr.amount
-        for cr in self.credit_fields:
-            if cr.side != 1:
-                raise EntryError('Entry corrupted: only credit Post are allowed in this container')
-            result_ct += cr.amount
+        for post in self.fields.values():
+            if not isinstance(post, yaerp.accounting.post.Post):
+                continue
+            if post.side != 0 and post.side != 1:
+                raise ValueError('account side must be equal to 0 or 1')
+            if post.side == 0:
+                result_dt += post.amount
+            else:
+                result_ct += post.amount
         return result_dt == result_ct
 
-    def field(self, key: str, value: Any):
-        self.info_fields[key] = value
+    def info(self, field_tag: str, field_value: Any):
+        ''' Insert new data field. '''
+        if field_tag in self.fields.keys():
+            raise RuntimeError('field tag already exist in this entry')
+        self.fields[field_tag] = field_value
 
-    def debit(self, account, amount):
-        self.debit_fields.append(Post(account, amount, 0, self))  
+    def debit(self, field_tag, account, amount: int):
+        ''' Insert new debit field. '''
+        self.flow(field_tag, account, amount, 0)
 
-    def credit(self, account, amount):
-        self.credit_fields.append(Post(account, amount, 1, self))
+    def credit(self, field_tag, account, amount:int):
+        ''' Insert new credit field. '''
+        self.flow(field_tag, account, amount, 1)
+
+    def flow(self, field_tag, account, amount, side):
+        ''' Insert new post field (debit or credit) '''
+        if field_tag in self.fields.keys():
+            raise RuntimeError('field tag already exist in this entry')
+        if side != 0 and side != 1:
+            raise ValueError('account side must be equal to 0 (dr) or 1 (cr)')
+        self.fields[field_tag] = yaerp.accounting.post.Post(account, amount, side, self)
 
     def commit(self):
+        ''' Post this entry to the ledger '''
         if not self.is_balanced():
-            raise EntryError('commit Entry failed: the Entry is not balanced')
+            raise RuntimeError('not balanced entry')
+        if self.journal is None:
+            raise ValueError('entry has no parent journal')
         # create new Posts if current ones are foreign
-        for idx, draft in enumerate(self.debit_fields):
-            if draft.entry != self:
-                self.debit_fields[idx] = (draft.account, draft.amount, 0, self)
-        for idx, draft in enumerate(self.credit_fields):
-            if draft.entry != self:
-                self.credit_fields[idx] = (draft.account, draft.amount, 1, self)
+        for key, draft in self.fields.items():
+            if isinstance(draft, yaerp.accounting.post.Post) and draft.entry != self:
+                self.fields[key] = yaerp.accounting.post.Post(draft.account, draft.amount, draft.side, self)
         self.journal.commit_entry(self)

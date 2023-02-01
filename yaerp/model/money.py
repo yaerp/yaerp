@@ -1,10 +1,5 @@
-from .exception import YaerpError
 from .quantity import Quantity
 from .currency import Currency
-
-class MoneyError(YaerpError):
-    def __init__(self, message):
-        super().__init__(message)
 
 class Money(Quantity):
     def __init__(self, raw_int: int, currency: Currency) -> None:
@@ -38,12 +33,12 @@ class Money(Quantity):
 
     def __add__(self, other):
         if self.currency != other.currency:
-            raise MoneyError('cannot add 2 different currencies')
+            raise ValueError('attempt to add two different currencies')
         return Money(self.__raw_value + other.__raw_value, self.currency)
 
     def __sub__(self, other):
         if self.currency != other.currency:
-            raise MoneyError('cannot subtract 2 different currencies')
+            raise ValueError('attempt to subtract 2 different currencies')
         return Money(self.__raw_value - other.__raw_value, self.currency)
 
     def __mul__(self, coefficient):

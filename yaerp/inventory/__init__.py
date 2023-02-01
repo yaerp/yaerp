@@ -1,2 +1,2 @@
-from .product import Product
-from .exception import InventoryError
+# from .product import Product
+# from .exception import InventoryError

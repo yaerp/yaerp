@@ -1,42 +1,28 @@
-from .exception import AccountingError
-
-
-class JournalError(AccountingError):
-    def __init__(self, message):
-        super().__init__(message)
+import yaerp.accounting.journal
+import yaerp.accounting.post
 
 class Journal:
 
-    def __init__(self, tag: str, ledger):
+    def __init__(self, tag: str, ledger: yaerp.accounting.ledger.Ledger):
         if not tag:
-            raise JournalError('Journal initialization failed: blank tag')
+            raise ValueError('tag is blank')
         self.tag = tag
         self.accounting_entries = []
         self.ledger = ledger
         if ledger:
             ledger.register_journal(self)
         
-
     def commit_entry(self, entry):
+        ''' Post journal entry to the ledger.'''
         self.validate_new_entry(entry) 
         self.ledger.commit_journal_entry(self, entry)
 
-
     def validate_new_entry(self, entry):
         if entry in self.accounting_entries:
-            # return False, 'the Entry already exist in this Journal'
-            raise JournalError('validate new Entry failed: the Entry already exist in this Journal')  
-        for debit_post in entry.debit_fields:
-            if debit_post.entry is None:
-                # return False, 'Post has no set Entry'
-                raise JournalError('validate new Entry failed: Post has no set Entry')
-            elif debit_post.entry != entry:
-                # return False, 'Post has set unknown Entry'
-                raise JournalError('validate new Entry failed: Post has set unknown Entry')
-        for credit_post in entry.credit_fields:
-            if credit_post.entry is None:
-                # return False, 'Post has no set Entry'
-                raise JournalError('validate new Entry failed: Post has no set Entry')
-            elif credit_post.entry != entry:
-                # return False, 'Post has set unknown Entry'
-                raise JournalError('validate new Entry failed: Post has set unknown Entry')
+            raise ValueError('the specified entry already exist in the journal')  
+        for field in entry.fields:
+            if field is yaerp.accounting.post.Post:
+                if not field.entry:
+                    raise ValueError('post has no parent entry')
+                if field.entry != entry:
+                    raise ValueError('post has invalid parent entry')
