@@ -7,3 +7,9 @@ class Post:
     amount: int
     side: int
     entry: Any
+
+    # def __str__(self):
+    #     if self.side == 0:
+    #         return 'Dt'
+    #     else:
+    #         return 'Ct'

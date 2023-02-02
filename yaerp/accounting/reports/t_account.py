@@ -1,3 +1,11 @@
+from itertools import chain
+import textwrap
+
+from yaerp.accounting.entry import Entry
+from yaerp.accounting.post import Post
+from yaerp.report.typesetting.columns import simultaneous_column_generator
+
+
 class T_account:
 
     unicode_bold_table_box = {
@@ -74,10 +82,7 @@ class T_account:
             self.linelength -= 1
  
     def truncate(self, text, max_length) -> str:
-        suspension = self.box['...']
-        suspension_length = len(suspension)
-        text = (text[:max_length - suspension_length] + suspension) if len(text) > max_length else text
-        return text
+        return textwrap.shorten(text, width=max_length, placeholder=self.box['...'])
 
     def header(self) -> str:
         result = self.leading_space
@@ -192,3 +197,56 @@ class T_account:
         elif side == 1:
             side_formatter = '{:<' + str(self.max_amount_length) + '} {:>' + str(max_desc_length) + '}'
             return side_formatter.format(amount, description)
+
+
+def render_entry(entry: Entry, layout):
+    account_set = set(field.account for field in entry.fields.values() if isinstance(field, Post))
+    account_list = list(account_set)
+    account_list.sort(key=lambda acc: acc.tag)
+    return render(*account_list, post_predicate = lambda post: post.entry == entry)
+
+
+def render(*accounts, post_predicate=None, col=2, col_len=37):
+    # account_counter = len(accounts)
+    column_generators = []
+    empty_column = []
+    col_idx = 0
+    for account_idx, account in enumerate(accounts):
+        if account_idx < col:
+            # if first run
+            col_idx = account_idx
+            column_generators.append([])   
+            empty_column.append(blank_row(col_len))
+        else:
+            # if next run
+            col_idx = account_idx % col
+            column_generators[col_idx].append(vertical_space_gen(col_len))
+        column_generators[col_idx].append(t_form_gen(account, post_predicate, col_len))
+
+
+    for col_idx, column in enumerate(column_generators):
+        # convert list of generators to the chain
+        column_generators[col_idx] = chain.from_iterable(column_generators[col_idx])
+
+    result = ''
+    for line in simultaneous_column_generator(
+                    column_generators=column_generators,
+                    empty_column_lines=empty_column,
+                    indent_width = 1, 
+                    gutter_width = 2):
+        result += line
+    return result
+
+def t_form_gen(account, post_predicate, col_len):
+    t_account = T_account(account.tag, account.name, max_length=col_len, max_amount_length=10, leading_spaces=0, new_line='', box=T_account.unicode_bold_table_box)  
+    yield from t_account.header_generator()
+    for post in filter(post_predicate, account.posts):
+        yield from t_account.row_generator(f'(*)', post.amount, post.side)
+
+def vertical_space_gen(col_len):
+    yield blank_row(col_len)
+    yield blank_row(col_len)
+
+def blank_row(col_len):
+    t_account = T_account('', '', max_length=col_len, max_amount_length=10, leading_spaces=0, new_line='', box=T_account.unicode_bold_table_box)  
+    return t_account.blank_row()

@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Any
+import uuid
 
 import yaerp.accounting.journal
 import yaerp.accounting.post
