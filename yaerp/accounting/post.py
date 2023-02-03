@@ -8,8 +8,29 @@ class Post:
     side: int
     entry: Any
 
-    # def __str__(self):
-    #     if self.side == 0:
-    #         return 'Dt'
-    #     else:
-    #         return 'Ct'
+    def get_info(self):
+        ''' Return tuple with 3 elements:
+                - source field name in journal,
+                - number of this post in the Entry,
+                - count of posts in the Entry
+        '''
+        if self.entry:
+            posts_counter = 0
+            this_post_number = 0
+            this_post_name = ''
+            for key, field in self.entry.fields.items():
+                if isinstance(field, Post):
+                    posts_counter += 1
+                if field == self:
+                    this_post_name = key
+                    this_post_number = posts_counter
+        return (this_post_name, this_post_number, posts_counter)
+
+    def __str__(self) -> str:
+        info = self.get_info()
+        journal_field_name = info[0]
+        if self.side == 0:
+            return f'Dt(\"{self.account.tag}\", {self.amount}) [transfer {self.amount}  to \"{self.account.name}\"]'
+        else:
+            return f'Ct(\"{self.account.tag}\", {self.amount}) [transfer {self.amount} from \"{self.account.name}\"]'
+        

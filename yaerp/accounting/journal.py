@@ -26,3 +26,6 @@ class Journal:
                     raise ValueError('post has no parent entry')
                 if field.entry != entry:
                     raise ValueError('post has invalid parent entry')
+    
+    def __str__(self) -> str:
+        return self.tag

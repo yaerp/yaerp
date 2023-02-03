@@ -3,7 +3,7 @@ from yaerp.accounting.ledger import Ledger
 from yaerp.accounting.journal import Journal
 from yaerp.accounting.account import Account
 from yaerp.accounting.entry import Entry
-from yaerp.accounting.reports.t_account import T_account, render_entry
+from yaerp.accounting.reports.t_account import T_account, render_entries, render_entry
 from yaerp.model.money import Money as M
 from yaerp.model.currency import Currency as C
 from yaerp.report.typesetting.columns import simultaneous_column_generator as typeset
@@ -25,25 +25,42 @@ def run():
     account100 = Account('100', ledger, name='Cash')
     account200 = Account('200', ledger, name='Sales')
     account300 = Account('300', ledger, name='Sales Tax')
+    account400 = Account('400', ledger, name='Purchases')
+    account500 = Account('500', ledger, name='Cost')
+    account600 = Account('600', ledger, name='Assets')
+    account700 = Account('700', ledger, name='Liabilities')
 
-    entry = Entry(journal=journal)
-    entry.info('date', '2022-12-30')
-    entry.debit('cash', account100, 120)
-    entry.credit('sale', account200, 120)
-    entry.commit()
 
-    entry = Entry(journal=journal)
-    entry.info('date', '2023-01-04')
-    entry.credit('cash', account100, 300)
-    entry.debit('purchase', account200, 300)
-    entry.commit()
+    entry1 = Entry(journal=journal)
+    entry1.info('date', '2022-12-30')
+    entry1.debit('cash', account100, 120)
+    entry1.credit('sale', account200, 120)
+    entry1.commit()
 
-    entry = Entry(journal=journal)
-    entry.info('date', '2023-01-03')
-    entry.debit('cash paynment', account100, 250)
-    entry.credit('sale', account200, 210)
-    entry.credit('tax', account300, 40)
-    entry.commit()
+    entry2 = Entry(journal=journal)
+    entry2.info('date', '2023-01-04')
+    entry2.credit('cash', account100, 300)
+    entry2.debit('purchase', account200, 300)
+    entry2.commit()
+
+    entry3 = Entry(journal=journal)
+    entry3.info('date', '2023-01-03')
+    entry3.debit('cash paynment', account100, 250)
+    entry3.credit('sale', account200, 210)
+    entry3.credit('tax', account300, 40)
+    entry3.commit()
+
+    entry4 = Entry(journal=journal)
+    entry4.info('date', '2023-01-03')
+    entry4.credit('cash widrawn', account100, 58)
+    entry4.debit('purchases', account400, 58)
+    entry4.commit()
+
+    entry5 = Entry(journal=journal)
+    entry5.info('date', '2023-01-03')
+    entry5.debit('cost', account500, 58)
+    entry5.credit('purchase', account400, 58)
+    entry5.commit()
 
     print(account100.get_debit(predicate=lambda post: '2022' in post.entry.fields['date']))
     print(account100.get_debit(predicate=lambda post: '2023' in post.entry.fields['date']))
@@ -112,8 +129,16 @@ def run():
     #         print(line, end='')
     #         f.write(line)
 
-    canvas = render_entry(entry, None)
-    print(canvas)
+    # canvas = render_entry(entry1, col=3, col_len=37)
+    # print(canvas)
+
+    # canvas = render_entry(entry2, col=3, col_len=37)
+    # print(canvas)
+
+    canvas = render_entries([entry1, entry2, entry3, entry4, entry5], col=3, col_len=37)
+    
+    for field in entry1.fields.values():
+        print(field)
 
 if __name__ == "__main__":
     run()

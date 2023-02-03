@@ -5,10 +5,14 @@ import uuid
 import yaerp.accounting.journal
 import yaerp.accounting.post
 
-@dataclass(frozen=False)
+# @dataclass(frozen=False)
 class Entry:
-    journal: yaerp.accounting.journal.Journal = field(default_factory=yaerp.accounting.journal.Journal)
-    fields: dict = field(default_factory=dict)
+
+    def __init__(self, journal):
+        self.journal = journal
+        self.fields = {}
+    # journal: yaerp.accounting.journal.Journal = field(default_factory=yaerp.accounting.journal.Journal)
+    # fields: dict = field(default_factory=dict)
 
     def is_balanced(self):
         result_dt, result_ct = 0, 0

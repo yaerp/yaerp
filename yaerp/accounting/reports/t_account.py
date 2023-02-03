@@ -199,14 +199,38 @@ class T_account:
             return side_formatter.format(amount, description)
 
 
-def render_entry(entry: Entry, layout):
+def render_entry(entry: Entry, col=2, col_len=37):
     account_set = set(field.account for field in entry.fields.values() if isinstance(field, Post))
     account_list = list(account_set)
     account_list.sort(key=lambda acc: acc.tag)
-    return render(*account_list, post_predicate = lambda post: post.entry == entry)
+    return render(*account_list, post_predicate = lambda post: post.entry == entry, col=col, col_len=col_len)
+
+def render_entries(entry_list, col=3, col_len=37):
+    entry_counter = {}
+    number_label = 0
+    accounts_dict = {}
+    for entry in entry_list:
+        # set 'label' for entry
+        if entry in entry_counter.keys():
+            continue
+        number_label += 1
+        entry_counter[entry] = number_label
+        # find engaged accounts
+        for field in entry.fields.values():
+            if isinstance(field, Post):
+                accounts_dict[field.account] = field.account
+    account_list = list(accounts_dict.values())
+    account_list.sort(key=lambda acc: acc.tag)
+    # render
+
+    print(render(*account_list, post_predicate=lambda post: post.entry in entry_list, 
+                    col=col, col_len=col_len, entry_counter=entry_counter))
+
+    for entry in entry_counter.keys():
+        print(entry_counter[entry])
 
 
-def render(*accounts, post_predicate=None, col=2, col_len=37):
+def render(*accounts, post_predicate=None, col=2, col_len=37, entry_counter=None):
     # account_counter = len(accounts)
     column_generators = []
     empty_column = []
@@ -221,7 +245,7 @@ def render(*accounts, post_predicate=None, col=2, col_len=37):
             # if next run
             col_idx = account_idx % col
             column_generators[col_idx].append(vertical_space_gen(col_len))
-        column_generators[col_idx].append(t_form_gen(account, post_predicate, col_len))
+        column_generators[col_idx].append(t_form_gen(account, post_predicate, col_len, entry_counter=entry_counter))
 
 
     for col_idx, column in enumerate(column_generators):
@@ -237,11 +261,25 @@ def render(*accounts, post_predicate=None, col=2, col_len=37):
         result += line
     return result
 
-def t_form_gen(account, post_predicate, col_len):
+def t_form_gen(account, post_predicate, col_len, entry_counter=None):
     t_account = T_account(account.tag, account.name, max_length=col_len, max_amount_length=10, leading_spaces=0, new_line='', box=T_account.unicode_bold_table_box)  
     yield from t_account.header_generator()
+
+    if not entry_counter:
+        entry_counter = {}
+        counter = 0
+        for post in filter(post_predicate, account.posts):
+            # collect entries
+            if post.entry in entry_counter.keys():
+                continue
+            counter += 1
+            entry_counter[post.entry] = counter
+
     for post in filter(post_predicate, account.posts):
-        yield from t_account.row_generator(f'(*)', post.amount, post.side)
+        post_info = post.get_info()        
+        # description = f'({entry_counter[post.entry]}.{post_info[1]})'
+        description = f'({entry_counter[post.entry]})'
+        yield from t_account.row_generator(description, post.amount, post.side)
 
 def vertical_space_gen(col_len):
     yield blank_row(col_len)
