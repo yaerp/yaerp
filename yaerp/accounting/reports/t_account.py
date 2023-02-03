@@ -275,11 +275,12 @@ def t_form_gen(account, post_predicate, col_len, entry_counter=None):
             counter += 1
             entry_counter[post.entry] = counter
 
+    currency = account.currency
     for post in filter(post_predicate, account.posts):
         post_info = post.get_info()        
         # description = f'({entry_counter[post.entry]}.{post_info[1]})'
         description = f'({entry_counter[post.entry]})'
-        yield from t_account.row_generator(description, post.amount, post.side)
+        yield from t_account.row_generator(description, currency.raw2str(post.amount), post.side)
 
 def vertical_space_gen(col_len):
     yield blank_row(col_len)

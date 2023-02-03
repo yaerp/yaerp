@@ -29,8 +29,9 @@ class Post:
     def __str__(self) -> str:
         info = self.get_info()
         journal_field_name = info[0]
+        currency = self.account.currency
         if self.side == 0:
-            return f'Dt(\"{self.account.tag}\", {self.amount}) [transfer {self.amount}  to \"{self.account.name}\"]'
+            return f'Dr(\"[{self.account.tag}] {self.account.name}\", {currency.raw2str(self.amount)}) - by \"{self.entry.journal.tag}\"/\"{journal_field_name}\"'
         else:
-            return f'Ct(\"{self.account.tag}\", {self.amount}) [transfer {self.amount} from \"{self.account.name}\"]'
+            return f'Cr(\"[{self.account.tag}] {self.account.name}\", {currency.raw2str(self.amount)}) - by \"{self.entry.journal.tag}\"/\"{journal_field_name}\"'
         

@@ -9,31 +9,33 @@ from yaerp.model.currency import Currency as C
 from yaerp.report.typesetting.columns import simultaneous_column_generator as typeset
 
 def run():
-    c = C('PLN', '985', 100, "Polish Złoty", 'zł', 'gr')
-    money = M(12300, c)
-    print(money)
+    currency = C('PLN', '985', 100, "Polish Złoty", 'zł', 'gr')
+    print(currency.amount2raw(100.78))
+    print(currency.raw2str(10078))
+    # money = M(12300, c)
+    # print(money)
 
     # locale.setlocale(locale.LC_ALL, 'pl')
     # print(locale.currency(123235534.7, international=True, grouping=True))
 
-    c = C('USD', '840', 100, 'United States dollar', '$', '\u00A2')
-    money = M(12300, c)
-    print(money)
+    # c = C('USD', '840', 100, 'United States dollar', '$', '\u00A2')
+    # money = M(12300, c)
+    # print(money)
 
     ledger = Ledger('GL')
     journal = Journal('GJ', ledger)
-    account100 = Account('100', ledger, name='Cash')
-    account200 = Account('200', ledger, name='Sales')
-    account300 = Account('300', ledger, name='Sales Tax')
-    account400 = Account('400', ledger, name='Purchases')
-    account500 = Account('500', ledger, name='Cost')
-    account600 = Account('600', ledger, name='Assets')
-    account700 = Account('700', ledger, name='Liabilities')
+    account100 = Account('100', ledger, currency, name='Cash')
+    account200 = Account('200', ledger, currency, name='Sales')
+    account300 = Account('300', ledger, currency, name='Sales Tax')
+    account400 = Account('400', ledger, currency, name='Purchases')
+    account500 = Account('500', ledger, currency, name='Cost')
+    account600 = Account('600', ledger, currency, name='Assets')
+    account700 = Account('700', ledger, currency, name='Liabilities')
 
 
     entry1 = Entry(journal=journal)
     entry1.info('date', '2022-12-30')
-    entry1.debit('cash', account100, 120)
+    entry1.debit('cash', account100, currency.amount2raw(1.20))
     entry1.credit('sale', account200, 120)
     entry1.commit()
 

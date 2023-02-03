@@ -1,12 +1,13 @@
 class Account:
     
-    def __init__(self, tag: str, ledger, name = None, guid = None) -> None:
+    def __init__(self, tag: str, ledger, currency, name = None, guid = None) -> None:
         self.tag = tag
         self.name = name
         self.guid = guid
         self.ledger = ledger
         if self.ledger:
             ledger.register_account(self)
+        self.currency = currency
         self.posts = [] # only Ledger should modify this list
 
     def append_post(self, post):
@@ -18,12 +19,12 @@ class Account:
         self.posts.append(post)
 
     def get_debit(self, predicate=None):
-        ''' Amount of debit posts. '''
+        ''' Amount (raw integer) of debit posts. '''
         return sum(post.amount for post in self.post_iter(
             dt_posts=True, predicate=predicate))
 
     def get_credit(self, predicate=None):
-        ''' Amount of credit posts. '''
+        ''' Amount (raw integer) of credit posts. '''
         return sum(post.amount for post in self.post_iter(
             ct_posts=True, predicate=predicate))
 

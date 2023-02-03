@@ -6,6 +6,7 @@ class CurrencyError(YaerpError):
         super().__init__(message)
 
 class Currency(Metric):
+
     def __init__(self, alphabetic_code, numeric_code, ratio_of_subunits_to_unit, international_name, national_unit_symbol=None, national_subunit_symbol=None, definition=None) -> None:
         super().__init__(international_name, alphabetic_code, definition)
         self.numeric_code = numeric_code
@@ -13,6 +14,21 @@ class Currency(Metric):
         self.national_unit_symbol = national_unit_symbol
         self.national_subunit_symbol = national_subunit_symbol
         self.__calculate_subunit(self.ratio_of_subunits_to_unit)
+
+    def raw2str(self, raw_int_value):
+        ''' Convert raw integer value to the actual amount '''
+        if raw_int_value is not int:
+            ValueError('input argument must be integer')
+        result = str(raw_int_value)
+        if self.dot_position > 0:
+            return ''.join([result[:-self.dot_position], ".", result[-self.dot_position:]])
+        return result
+
+    def amount2raw(self, amount):
+        ''' Convert amount to raw integer value '''
+        if self.dot_position > 0:
+            return int(round(1.0 * amount * 10**self.dot_position, 0))
+        return int(round(amount, 0))
 
     def __calculate_subunit(self, ratio_of_subunits_to_unit: int):
         for i in range(0, 19):
