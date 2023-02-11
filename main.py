@@ -35,21 +35,21 @@ def run():
 
     entry1 = Entry(journal=journal)
     entry1.info('date', '2022-12-30')
-    entry1.debit('cash', account100, currency.amount2raw(1.20))
-    entry1.credit('sale', account200, 120)
+    entry1.debit('cash', account100, currency.amount2raw(1897.20))
+    entry1.credit('sale', account200, currency.amount2raw(1897.20))
     entry1.commit()
 
     entry2 = Entry(journal=journal)
     entry2.info('date', '2023-01-04')
-    entry2.credit('cash', account100, 300)
-    entry2.debit('purchase', account200, 300)
+    entry2.credit('cash', account100, 3553300)
+    entry2.debit('purchase', account200, 3553300)
     entry2.commit()
 
     entry3 = Entry(journal=journal)
     entry3.info('date', '2023-01-03')
-    entry3.debit('cash paynment', account100, 250)
-    entry3.credit('sale', account200, 210)
-    entry3.credit('tax', account300, 40)
+    entry3.debit('cash paynment', account100, 25000)
+    entry3.credit('sale', account200, 21000)
+    entry3.credit('tax', account300, 4000)
     entry3.commit()
 
     entry4 = Entry(journal=journal)

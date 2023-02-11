@@ -2,6 +2,7 @@ from .quantity import Quantity
 from .currency import Currency
 
 class Money(Quantity):
+
     def __init__(self, raw_int: int, currency: Currency) -> None:
         super().__init__()
         self.__raw_value = raw_int

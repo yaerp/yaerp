@@ -15,13 +15,22 @@ class Currency(Metric):
         self.national_subunit_symbol = national_subunit_symbol
         self.__calculate_subunit(self.ratio_of_subunits_to_unit)
 
-    def raw2str(self, raw_int_value):
+    def raw2str(self, raw_int_value, group_separator='\u00A0', separator_positions=[3,6,9,12,15,18]):
         ''' Convert raw integer value to the actual amount '''
         if raw_int_value is not int:
             ValueError('input argument must be integer')
         result = str(raw_int_value)
+        integ_part_str = result[:-self.dot_position]
+        fract_part_str = result[-self.dot_position:]
+        if group_separator:
+            rev_parts = []
+            for idx, c in enumerate(reversed(integ_part_str)):
+                if idx in separator_positions:
+                    rev_parts.append(group_separator)
+                rev_parts.append(c)
+            integ_part_str = ''.join(reversed(rev_parts))
         if self.dot_position > 0:
-            return ''.join([result[:-self.dot_position], ".", result[-self.dot_position:]])
+            result = ''.join([integ_part_str, ".", fract_part_str])
         return result
 
     def amount2raw(self, amount):
