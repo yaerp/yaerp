@@ -1,10 +1,41 @@
+from dataclasses import dataclass
 from itertools import chain
 import textwrap
 
+from yaerp.accounting.transaction import Transaction
 from yaerp.accounting.entry import Entry
-from yaerp.accounting.post import Post
 from yaerp.report.typesetting.columns import simultaneous_column_generator
 
+@dataclass
+class RenderParameters:
+    t_account_width: int
+    t_account_amount_width: int
+    number_of_columns: int
+    gutter_between_columns: int
+    first_column_indend: int
+
+
+render_layout = {
+    "1x31": RenderParameters(29, 8, 1, 0, 0),
+    "1x39": RenderParameters(37, 12, 1, 0, 0),
+    "1x57": RenderParameters(55, 18, 1, 0, 0),  
+    "1x75": RenderParameters(73, 18, 1, 0, 0),
+    "2x31": RenderParameters(29, 8, 2, 2, 0),  
+    "2x39": RenderParameters(37, 12, 2, 2, 0),
+    "old terminal": RenderParameters(37, 12, 2, 2, 0),
+    "2x57": RenderParameters(55, 18, 2, 2, 0),
+    "modern terminal": RenderParameters(55, 18, 2, 2, 0),
+    "2x75": RenderParameters(73, 18, 2, 2, 0),
+    "3x31": RenderParameters(29, 8, 3, 2, 0), 
+    "3x39": RenderParameters(37, 12, 3, 2, 0), 
+    "sweet": RenderParameters(37, 12, 3, 2, 0), 
+    "3x57": RenderParameters(55, 18, 3, 2, 0),
+    "3x75": RenderParameters(73, 18, 3, 2, 0),
+    "4x31": RenderParameters(29, 8, 4, 2, 0), 
+    "4x39": RenderParameters(37, 12, 4, 2, 0), 
+    "4x57": RenderParameters(55, 18, 4, 2, 0),
+    "4x75": RenderParameters(73, 18, 4, 2, 0),
+}
 
 class T_account:
 
@@ -199,13 +230,13 @@ class T_account:
             return side_formatter.format(amount, description)
 
 
-def render_entry(entry: Entry, col=2, col_len=37):
-    account_set = set(field.account for field in entry.fields.values() if isinstance(field, Post))
+def render_entry(entry: Transaction, col=2, col_len=37):
+    account_set = set(field.account for field in entry.fields.values() if isinstance(field, Entry))
     account_list = list(account_set)
     account_list.sort(key=lambda acc: acc.tag)
     return render(*account_list, post_predicate = lambda post: post.entry == entry, col=col, col_len=col_len)
 
-def render_entries(entry_list, col=3, col_len=37):
+def render_entries(entry_list, layout=None, col=3, col_len=37):
     entry_counter = {}
     number_label = 0
     accounts_dict = {}
@@ -217,21 +248,22 @@ def render_entries(entry_list, col=3, col_len=37):
         entry_counter[entry] = number_label
         # find engaged accounts
         for field in entry.fields.values():
-            if isinstance(field, Post):
+            if isinstance(field, Entry):
                 accounts_dict[field.account] = field.account
     account_list = list(accounts_dict.values())
     account_list.sort(key=lambda acc: acc.tag)
     # render
 
-    print(render(*account_list, post_predicate=lambda post: post.entry in entry_list, 
-                    col=col, col_len=col_len, entry_counter=entry_counter))
+    print(render(*account_list, post_predicate=lambda post: post.transaction in entry_list, 
+                    layout=layout, col=col, col_len=col_len, entry_counter=entry_counter))
 
     for entry in entry_counter.keys():
         print(entry_counter[entry])
 
 
-def render(*accounts, post_predicate=None, col=2, col_len=37, entry_counter=None):
-    # account_counter = len(accounts)
+def render(*accounts, post_predicate=None, layout=None, col=2, col_len=37, entry_counter=None):
+
+    col_len = layout.t_account_width
     column_generators = []
     empty_column = []
     col_idx = 0
@@ -279,7 +311,7 @@ def t_form_gen(account, post_predicate, col_len, entry_counter=None):
     for post in filter(post_predicate, account.posts):
         post_info = post.get_info()        
         # description = f'({entry_counter[post.entry]}.{post_info[1]})'
-        description = f'({entry_counter[post.entry]})'
+        description = f'({entry_counter[post.transaction]})'
         yield from t_account.row_generator(description, currency.raw2str(post.amount), post.side)
 
 def vertical_space_gen(col_len):

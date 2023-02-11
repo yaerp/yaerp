@@ -2,8 +2,8 @@ import locale
 from yaerp.accounting.ledger import Ledger
 from yaerp.accounting.journal import Journal
 from yaerp.accounting.account import Account
-from yaerp.accounting.entry import Entry
-from yaerp.accounting.reports.t_account import T_account, render_entries, render_entry
+from yaerp.accounting.transaction import Transaction
+from yaerp.accounting.reports.t_account import T_account, render_entries, render_entry, render_layout
 from yaerp.model.money import Money as M
 from yaerp.model.currency import Currency as C
 from yaerp.report.typesetting.columns import simultaneous_column_generator as typeset
@@ -33,42 +33,42 @@ def run():
     account700 = Account('700', ledger, currency, name='Liabilities')
 
 
-    entry1 = Entry(journal=journal)
+    entry1 = Transaction(journal=journal)
     entry1.info('date', '2022-12-30')
     entry1.debit('cash', account100, currency.amount2raw(1897.20))
     entry1.credit('sale', account200, currency.amount2raw(1897.20))
     entry1.commit()
 
-    entry2 = Entry(journal=journal)
+    entry2 = Transaction(journal=journal)
     entry2.info('date', '2023-01-04')
     entry2.credit('cash', account100, 3553300)
     entry2.debit('purchase', account200, 3553300)
     entry2.commit()
 
-    entry3 = Entry(journal=journal)
+    entry3 = Transaction(journal=journal)
     entry3.info('date', '2023-01-03')
     entry3.debit('cash paynment', account100, 25000)
     entry3.credit('sale', account200, 21000)
     entry3.credit('tax', account300, 4000)
     entry3.commit()
 
-    entry4 = Entry(journal=journal)
+    entry4 = Transaction(journal=journal)
     entry4.info('date', '2023-01-03')
     entry4.credit('cash widrawn', account100, 58)
     entry4.debit('purchases', account400, 58)
     entry4.commit()
 
-    entry5 = Entry(journal=journal)
+    entry5 = Transaction(journal=journal)
     entry5.info('date', '2023-01-03')
     entry5.debit('cost', account500, 58)
     entry5.credit('purchase', account400, 58)
     entry5.commit()
 
-    print(account100.get_debit(predicate=lambda post: '2022' in post.entry.fields['date']))
-    print(account100.get_debit(predicate=lambda post: '2023' in post.entry.fields['date']))
+    print(account100.get_debit(predicate=lambda post: '2022' in post.transaction.fields['date']))
+    print(account100.get_debit(predicate=lambda post: '2023' in post.transaction.fields['date']))
 
-    print(account200.get_credit(predicate=lambda post: '2022' in post.entry.fields['date']))
-    print(account200.get_credit(predicate=lambda post: '2023' in post.entry.fields['date']))
+    print(account200.get_credit(predicate=lambda post: '2022' in post.transaction.fields['date']))
+    print(account200.get_credit(predicate=lambda post: '2023' in post.transaction.fields['date']))
 
     i = 1
     c = 37
@@ -137,7 +137,7 @@ def run():
     # canvas = render_entry(entry2, col=3, col_len=37)
     # print(canvas)
 
-    canvas = render_entries([entry1, entry2, entry3, entry4, entry5], col=3, col_len=37)
+    canvas = render_entries([entry1, entry2, entry3, entry4, entry5], layout=render_layout['sweet'], col=3, col_len=37)
     
     for field in entry1.fields.values():
         print(field)

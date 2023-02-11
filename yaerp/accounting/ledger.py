@@ -1,5 +1,5 @@
 import uuid
-import yaerp.accounting.post
+import yaerp.accounting.entry
 
 
 class Ledger:
@@ -10,39 +10,39 @@ class Ledger:
         self.accounts = {} # associated accounts
         self.journals = {} # associated journals
 
-    def commit_journal_entry(self, journal, entry):
-        self.__validate_entry(journal, entry)         
-        for field in entry.fields.values():
-            if isinstance(field, yaerp.accounting.post.Post):
-                self.__append_post(field)
-        journal.accounting_entries.append(entry)
+    def commit_transaction(self, journal, transaction):
+        self.__validate_entries(journal, transaction)         
+        for field in transaction.fields.values():
+            if isinstance(field, yaerp.accounting.entry.Entry):
+                self.__append_entry(field)
+        journal.transactions.append(transaction)
         
+    def __validate_entries(self, journal, transaction):
+        if not transaction.is_balanced():
+            raise RuntimeError('not balanced Transaction')
+        for field in transaction.fields.values():
+            if isinstance(field, yaerp.accounting.entry.Entry):
+                self.__validate_entry(journal, field)
+
     def __validate_entry(self, journal, entry):
-        if not entry.is_balanced():
-            raise RuntimeError('not balanced Entry')
-        for field in entry.fields:
-            if isinstance(field, yaerp.accounting.post.Post):
-                self.__validate_post(journal, field)
+        if entry.account is None:
+            raise ValueError('parent account is None')
+        if entry.account not in self.accounts.values():
+            raise ValueError('parent account not associated with this ledger')
+        if entry.transaction is None:
+            raise ValueError('parent transaction is None')
+        if entry.transaction.journal is None:
+            raise ValueError('parent journal is None')           
+        if entry.transaction.journal != journal:
+            raise ValueError('parent journal should be the same as the posting journal')
+        if entry.transaction.journal not in self.journals.values():
+            raise ValueError('parent journal not associated whith this ledger') 
+        if entry in self.posts:
+            raise ValueError('entry already exist in the ledger posts')
 
-    def __validate_post(self, journal, post):
-        if post.account is None:
-            raise ValueError('post.account is None')
-        if post.account not in self.accounts.values():
-            raise ValueError('post.account not associated with this ledger')
-        if post.entry is None:
-            raise ValueError('post.entry is None')
-        if post.entry.journal is None:
-            raise ValueError('post.entry.journal is None')           
-        if post.entry.journal != journal:
-            raise ValueError('post.entry.journal should be the same as the posting journal')
-        if post.entry.journal not in self.journals.values():
-            raise ValueError('post.entry.journal not associated whith this ledger') 
-        if post in self.posts:
-            raise ValueError('post already exist in the ledger')
-
-    def __append_post(self, post):
-        self.posts.append(post)
-        post.account.append_post(post)
+    def __append_entry(self, entry):
+        self.posts.append(entry)
+        entry.account.append_entry(entry)
 
     def register_account(self, account):
         if not account:

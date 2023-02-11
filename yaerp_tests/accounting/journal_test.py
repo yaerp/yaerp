@@ -1,6 +1,6 @@
 import unittest
 
-from yaerp.accounting.entry import Entry
+from yaerp.accounting.transaction import Transaction
 from yaerp.accounting.ledger import Ledger
 from yaerp.accounting.journal import Journal, JournalError
 from yaerp.accounting.account import Account
@@ -15,7 +15,7 @@ class TestJournal(unittest.TestCase):
 
     def test_init_journal(self):
         empty_journal = Journal('TEST JOURNAL', None)
-        self.assertEqual(len(empty_journal.accounting_entries), 0)
+        self.assertEqual(len(empty_journal.transactions), 0)
         self.assertEqual(empty_journal.tag, 'TEST JOURNAL')
         self.assertIsNone(empty_journal.ledger)
         self.assertFalse(empty_journal in self.ledger.journals.values())
@@ -25,29 +25,29 @@ class TestJournal(unittest.TestCase):
         empty_journal = Journal('TEST JOURNAL', self.ledger)
         self.assertIsInstance(empty_journal.ledger, Ledger)
 
-    def test_commit_entry(self):
-        entry = Entry(self.journal, {'Title': 'Entry 1'}, [], [])
-        entry.debit(self.account1, 599)
-        entry.credit(self.account2, 599)
-        self.assertEqual(len(self.journal.accounting_entries), 0)
-        self.journal.commit_entry(entry)
-        self.assertEqual(len(self.journal.accounting_entries), 1)
+    def test_commit_transaction(self):
+        tran = Transaction(self.journal, {'Title': 'Entry 1'}, [], [])
+        tran.debit(self.account1, 599)
+        tran.credit(self.account2, 599)
+        self.assertEqual(len(self.journal.transactions), 0)
+        self.journal.commit_transaction(tran)
+        self.assertEqual(len(self.journal.transactions), 1)
         try:
-            self.journal.commit_entry(entry)
+            self.journal.commit_transaction(tran)
             self.fail()
         except JournalError:
-            self.assertEqual(len(self.journal.accounting_entries), 1)
-        same_records_entry = Entry({'Title': 'Entry 2'}, entry.debit_fields, entry.credit_fields)
+            self.assertEqual(len(self.journal.transactions), 1)
+        same_records_tran = Transaction({'Title': 'Entry 2'}, tran.debit_fields, tran.credit_fields)
         try:
-            self.journal.commit_entry(same_records_entry)
+            self.journal.commit_transaction(same_records_tran)
             self.fail()
         except JournalError:
-            self.assertEqual(len(self.journal.accounting_entries), 1)
-        new_entry = Entry(self.journal, {'Title': 'Entry 3'}, [], [])
-        new_entry.debit(self.account2, 12)
-        new_entry.credit(self.account1, 12)
-        self.journal.commit_entry(new_entry)
-        self.assertEqual(len(self.journal.accounting_entries), 2)
+            self.assertEqual(len(self.journal.transactions), 1)
+        new_tran = Transaction(self.journal, {'Title': 'Entry 3'}, [], [])
+        new_tran.debit(self.account2, 12)
+        new_tran.credit(self.account1, 12)
+        self.journal.commit_transaction(new_tran)
+        self.assertEqual(len(self.journal.transactions), 2)
 
     def test_register_journal_in_ledger(self):
         ledger = Ledger('GL')

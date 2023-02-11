@@ -1,31 +1,30 @@
-import yaerp.accounting.journal
-import yaerp.accounting.post
+import yaerp.accounting.entry
 
 class Journal:
 
-    def __init__(self, tag: str, ledger: yaerp.accounting.ledger.Ledger):
+    def __init__(self, tag: str, ledger):
         if not tag:
             raise ValueError('tag is blank')
         self.tag = tag
-        self.accounting_entries = []
         self.ledger = ledger
         if ledger:
-            ledger.register_journal(self)
+            ledger.register_journal(self)       
+        self.transactions = []
         
-    def commit_entry(self, entry):
-        ''' Post journal entry to the ledger.'''
-        self.validate_new_entry(entry) 
-        self.ledger.commit_journal_entry(self, entry)
+    def commit_transaction(self, transaction):
+        ''' Post transaction entries to the ledger.'''
+        self.validate_new_transaction(transaction) 
+        self.ledger.commit_transaction(self, transaction)
 
-    def validate_new_entry(self, entry):
-        if entry in self.accounting_entries:
-            raise ValueError('the specified entry already exist in the journal')  
-        for field in entry.fields:
-            if field is yaerp.accounting.post.Post:
-                if not field.entry:
-                    raise ValueError('post has no parent entry')
-                if field.entry != entry:
-                    raise ValueError('post has invalid parent entry')
+    def validate_new_transaction(self, transaction):
+        if transaction in self.transactions:
+            raise ValueError('the specified transaction already exist in the journal')  
+        for field in transaction.fields.values():
+            if isinstance(field, yaerp.accounting.entry.Entry):
+                if not field.transaction:
+                    raise ValueError('entry has no parent transaction')
+                if field.transaction != transaction:
+                    raise ValueError('entry has invalid parent transaction')
     
     def __str__(self) -> str:
         return self.tag

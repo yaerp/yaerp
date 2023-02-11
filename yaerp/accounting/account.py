@@ -10,7 +10,7 @@ class Account:
         self.currency = currency
         self.posts = [] # only Ledger should modify this list
 
-    def append_post(self, post):
+    def append_entry(self, post):
         ''' A ledger invoke this function when Entry is in the process of posting. '''
         if post.account != self:
             raise ValueError('post is assigned to an another account')
