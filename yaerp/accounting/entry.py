@@ -3,6 +3,11 @@ from typing import Any
 
 @dataclass(frozen=True)
 class Entry:
+    """ 
+    Account entry - primal part of journal transaction.
+    A transaction in double-entry bookkepping always affect at least two account,
+    always includes at least one entry on debit side and one entry on credit side.
+    """
     account: Any
     amount: int
     side: int

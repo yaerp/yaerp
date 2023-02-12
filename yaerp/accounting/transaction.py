@@ -7,6 +7,9 @@ import yaerp.accounting.entry
 
 # @dataclass(frozen=False)
 class Transaction:
+    """ Journal Transaction (a.k.a Journal Entry) stores single accounting record 
+    related to sale, purchase, adjustment, depreciation, opening, closing, etc. 
+    """
 
     def __init__(self, journal):
         self.journal = journal
@@ -60,3 +63,12 @@ class Transaction:
             if isinstance(draft, yaerp.accounting.entry.Entry) and draft.transaction != self:
                 self.fields[key] = yaerp.accounting.entry.Entry(draft.account, draft.amount, draft.side, self)
         self.journal.commit_transaction(self)
+
+    def __str__(self):
+        return ''.join([
+            '; '.join([f"{key}:{str(value)}" for key, value in self.fields.items() if isinstance(value, (str, int, float))]),
+            '\n    ',
+            '\n    '.join([f"{str(value)}" for value in self.fields.values() if isinstance(value, yaerp.accounting.entry.Entry)]),
+            '\n'
+            ])
+    

@@ -12,7 +12,7 @@ class RenderParameters:
     t_account_amount_width: int
     number_of_columns: int
     gutter_between_columns: int
-    first_column_indend: int
+    first_column_indent: int
 
 
 render_layout = {
@@ -22,13 +22,13 @@ render_layout = {
     "1x75": RenderParameters(73, 18, 1, 0, 0),
     "2x31": RenderParameters(29, 8, 2, 2, 0),  
     "2x39": RenderParameters(37, 12, 2, 2, 0),
-    "old terminal": RenderParameters(37, 12, 2, 2, 0),
+    "terminal-80-2": RenderParameters(37, 12, 2, 4, 0),
     "2x57": RenderParameters(55, 18, 2, 2, 0),
-    "modern terminal": RenderParameters(55, 18, 2, 2, 0),
+    "terminal-120-2": RenderParameters(55, 18, 2, 7, 0),
     "2x75": RenderParameters(73, 18, 2, 2, 0),
     "3x31": RenderParameters(29, 8, 3, 2, 0), 
     "3x39": RenderParameters(37, 12, 3, 2, 0), 
-    "sweet": RenderParameters(37, 12, 3, 2, 0), 
+    "terminal-120-3": RenderParameters(37, 12, 3, 3, 0), 
     "3x57": RenderParameters(55, 18, 3, 2, 0),
     "3x75": RenderParameters(73, 18, 3, 2, 0),
     "4x31": RenderParameters(29, 8, 4, 2, 0), 
@@ -236,48 +236,50 @@ def render_entry(entry: Transaction, col=2, col_len=37):
     account_list.sort(key=lambda acc: acc.tag)
     return render(*account_list, post_predicate = lambda post: post.entry == entry, col=col, col_len=col_len)
 
-def render_entries(entry_list, layout=None, col=3, col_len=37):
-    entry_counter = {}
+def render_entries(transaction_list, layout=None):
+    tran_counter = {}
     number_label = 0
     accounts_dict = {}
-    for entry in entry_list:
+    for tran in transaction_list:
         # set 'label' for entry
-        if entry in entry_counter.keys():
+        if tran in tran_counter.keys():
             continue
         number_label += 1
-        entry_counter[entry] = number_label
+        tran_counter[tran] = number_label
         # find engaged accounts
-        for field in entry.fields.values():
+        for field in tran.fields.values():
             if isinstance(field, Entry):
                 accounts_dict[field.account] = field.account
     account_list = list(accounts_dict.values())
     account_list.sort(key=lambda acc: acc.tag)
     # render
 
-    print(render(*account_list, post_predicate=lambda post: post.transaction in entry_list, 
-                    layout=layout, col=col, col_len=col_len, entry_counter=entry_counter))
+    print(render(*account_list, post_predicate=lambda post: post.transaction in transaction_list, 
+                    layout=layout, entry_counter=tran_counter))
 
-    for entry in entry_counter.keys():
-        print(entry_counter[entry])
+    for tran in tran_counter.keys():
+        print(f"{tran_counter[tran]}. {tran}")
 
 
-def render(*accounts, post_predicate=None, layout=None, col=2, col_len=37, entry_counter=None):
+def render(*accounts, post_predicate=None, layout=None, entry_counter=None):
+    # col = layout.number_of_columns
+    # col_len = layout.t_account_width
+    # amount_width = layout.t_account_amount_width
 
-    col_len = layout.t_account_width
     column_generators = []
     empty_column = []
     col_idx = 0
     for account_idx, account in enumerate(accounts):
-        if account_idx < col:
+        if account_idx < layout.number_of_columns:
             # if first run
             col_idx = account_idx
             column_generators.append([])   
-            empty_column.append(blank_row(col_len))
+            empty_column.append(blank_row(layout.t_account_width))
         else:
             # if next run
-            col_idx = account_idx % col
-            column_generators[col_idx].append(vertical_space_gen(col_len))
-        column_generators[col_idx].append(t_form_gen(account, post_predicate, col_len, entry_counter=entry_counter))
+            col_idx = account_idx % layout.number_of_columns
+            column_generators[col_idx].append(vertical_space_gen(layout.t_account_width))
+        column_generators[col_idx].append(t_form_gen(account, post_predicate, None, layout=layout, entry_counter=entry_counter))
 
 
     for col_idx, column in enumerate(column_generators):
@@ -288,13 +290,13 @@ def render(*accounts, post_predicate=None, layout=None, col=2, col_len=37, entry
     for line in simultaneous_column_generator(
                     column_generators=column_generators,
                     empty_column_lines=empty_column,
-                    indent_width = 1, 
-                    gutter_width = 2):
+                    indent_width = layout.first_column_indent, 
+                    gutter_width = layout.gutter_between_columns):
         result += line
     return result
 
-def t_form_gen(account, post_predicate, col_len, entry_counter=None):
-    t_account = T_account(account.tag, account.name, max_length=col_len, max_amount_length=10, leading_spaces=0, new_line='', box=T_account.unicode_bold_table_box)  
+def t_form_gen(account, post_predicate, col_len,layout=None, entry_counter=None):
+    t_account = T_account(account.tag, account.name, max_length=layout.t_account_width, max_amount_length=layout.t_account_amount_width, leading_spaces=0, new_line='', box=T_account.unicode_bold_table_box)  
     yield from t_account.header_generator()
 
     if not entry_counter:

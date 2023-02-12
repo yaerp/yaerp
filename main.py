@@ -32,7 +32,6 @@ def run():
     account600 = Account('600', ledger, currency, name='Assets')
     account700 = Account('700', ledger, currency, name='Liabilities')
 
-
     entry1 = Transaction(journal=journal)
     entry1.info('date', '2022-12-30')
     entry1.debit('cash', account100, currency.amount2raw(1897.20))
@@ -137,7 +136,7 @@ def run():
     # canvas = render_entry(entry2, col=3, col_len=37)
     # print(canvas)
 
-    canvas = render_entries([entry1, entry2, entry3, entry4, entry5], layout=render_layout['sweet'], col=3, col_len=37)
+    canvas = render_entries([entry1, entry2, entry3, entry4, entry5], layout=render_layout['terminal-120-2'])
     
     for field in entry1.fields.values():
         print(field)
