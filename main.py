@@ -3,6 +3,7 @@ from yaerp.accounting.ledger import Ledger
 from yaerp.accounting.journal import Journal
 from yaerp.accounting.account import Account
 from yaerp.accounting.transaction import Transaction
+from yaerp.accounting.entry import Entry
 from yaerp.accounting.reports.t_account import T_account, render_entries, render_entry, render_layout
 from yaerp.model.money import Money as M
 from yaerp.model.currency import Currency as C
@@ -23,7 +24,7 @@ def run():
     # print(money)
 
     ledger = Ledger('GL')
-    journal = Journal('GJ', ledger)
+    journal = Journal('General Journal', ledger)
     account100 = Account('100', ledger, currency, name='Cash')
     account200 = Account('200', ledger, currency, name='Sales')
     account300 = Account('300', ledger, currency, name='Sales Tax')
@@ -32,42 +33,73 @@ def run():
     account600 = Account('600', ledger, currency, name='Assets')
     account700 = Account('700', ledger, currency, name='Liabilities')
 
-    entry1 = Transaction(journal=journal)
-    entry1.info('date', '2022-12-30')
-    entry1.debit('cash', account100, currency.amount2raw(1897.20))
-    entry1.credit('sale', account200, currency.amount2raw(1897.20))
+    class AdjustingJournal(Journal):
+        def define_fields(self, transaction):
+            return {
+                'Date': None,
+                'Description': 'Adjusting',
+                'Account': []
+            }
+
+    adjusting_journal = AdjustingJournal('Adjusting Journal', ledger)
+
+    entry1 = Transaction(journal=adjusting_journal)
+    entry1.info('Date', '2022-12-30')
+    entry1.info('Description', 'Correction')
+    entry1.debit('Account', account100, currency.amount2raw(1897.20))
+    entry1.credit('Account', account200, currency.amount2raw(1897.20))
+    entry1.debit('Account', account100, currency.amount2raw(-897.20))
+    entry1.credit('Account', account200, currency.amount2raw(-897.20))
     entry1.commit()
 
     entry2 = Transaction(journal=journal)
-    entry2.info('date', '2023-01-04')
-    entry2.credit('cash', account100, 3553300)
-    entry2.debit('purchase', account200, 3553300)
+    entry2.info('Date', '2023-01-04')
+    entry2.info('Description', 'Example of Sales')
+    entry2.credit('Credit', account100, 3553300)
+    entry2.debit('Debit', account200, 3553300)
     entry2.commit()
 
-    entry3 = Transaction(journal=journal)
-    entry3.info('date', '2023-01-03')
-    entry3.debit('cash paynment', account100, 25000)
-    entry3.credit('sale', account200, 21000)
-    entry3.credit('tax', account300, 4000)
+    class SaleJournal(Journal):
+        def define_fields(self, transaction):
+            return {
+                'Date': None,
+                'Description': None,
+                'Cash': Entry(None, 0, 0, transaction),
+                'Sale': Entry(None, 0, 1, transaction),
+                'Tax': Entry(None, 0, 1, transaction)
+            }
+
+    # TODO: if Entry above contain specified account this means the account is fixed
+
+    sale_journal = SaleJournal('Sale Journal', ledger)
+
+    entry3 = Transaction(journal=sale_journal)
+    entry3.info('Date', '2023-01-03')
+    entry3.info('Description', 'Sold 3 books')
+    entry3.debit('Cash', account100, 25000)
+    entry3.credit('Sale', account200, 21000)
+    entry3.credit('Tax', account300, 4000)
     entry3.commit()
 
     entry4 = Transaction(journal=journal)
-    entry4.info('date', '2023-01-03')
-    entry4.credit('cash widrawn', account100, 58)
-    entry4.debit('purchases', account400, 58)
+    entry4.info('Date', '2023-01-03')
+    entry4.info('Description', 'Purchase of the printer')
+    entry4.credit('Credit', account100, 58)
+    entry4.debit('Debit', account400, 58)
     entry4.commit()
 
     entry5 = Transaction(journal=journal)
-    entry5.info('date', '2023-01-03')
-    entry5.debit('cost', account500, 58)
-    entry5.credit('purchase', account400, 58)
+    entry5.info('Date', '2023-01-03')
+    entry5.info('Description', 'Accept the printer as a cost')
+    entry5.debit('Debit', account500, 58)
+    entry5.credit('Credit', account400, 58)
     entry5.commit()
 
-    print(account100.get_debit(predicate=lambda post: '2022' in post.transaction.fields['date']))
-    print(account100.get_debit(predicate=lambda post: '2023' in post.transaction.fields['date']))
+    print(account100.get_debit(predicate=lambda post: '2022' in post.transaction.fields['Date']))
+    print(account100.get_debit(predicate=lambda post: '2023' in post.transaction.fields['Date']))
 
-    print(account200.get_credit(predicate=lambda post: '2022' in post.transaction.fields['date']))
-    print(account200.get_credit(predicate=lambda post: '2023' in post.transaction.fields['date']))
+    print(account200.get_credit(predicate=lambda post: '2022' in post.transaction.fields['Date']))
+    print(account200.get_credit(predicate=lambda post: '2023' in post.transaction.fields['Date']))
 
     i = 1
     c = 37
@@ -137,8 +169,9 @@ def run():
     # print(canvas)
 
     canvas = render_entries([entry1, entry2, entry3, entry4, entry5], layout=render_layout['terminal-120-2'])
-    
-    for field in entry1.fields.values():
+
+
+    for field in entry3.fields.values():
         print(field)
 
 if __name__ == "__main__":

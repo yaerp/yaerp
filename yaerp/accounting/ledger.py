@@ -15,6 +15,9 @@ class Ledger:
         for field in transaction.fields.values():
             if isinstance(field, yaerp.accounting.entry.Entry):
                 self.__append_entry(field)
+            elif isinstance(field, list):
+                for element in field:
+                    self.__append_entry(element)
         journal.transactions.append(transaction)
         
     def __validate_entries(self, journal, transaction):
@@ -23,6 +26,9 @@ class Ledger:
         for field in transaction.fields.values():
             if isinstance(field, yaerp.accounting.entry.Entry):
                 self.__validate_entry(journal, field)
+            elif isinstance(field, list):
+                for element in field:
+                    self.__validate_entry(journal, element)
 
     def __validate_entry(self, journal, entry):
         if entry.account is None:
