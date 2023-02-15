@@ -1,8 +1,9 @@
+from yaerp.accounting.ledger import Ledger
 from yaerp.accounting.entry import Entry
 
 class Journal:
     '''
-    * Journal *
+    * Journal
     Journal is a book that contain a sequence of business transactions.
 
       Business transaction, also known as 'journal entry', contains the data
@@ -22,7 +23,7 @@ class Journal:
     Note that new Journal class, derived from this class can define completly new
     set of fields.
     '''
-    def __init__(self, tag: str, ledger):
+    def __init__(self, tag: str, ledger: Ledger):
         if not tag:
             raise ValueError('tag is blank')
         self.tag = tag
@@ -50,12 +51,12 @@ class Journal:
                 for example
                             'Date': None
                             'Description': None
-          - Entry object means: 'this is field for single entry' (fixed account side)
+          - Entry object means: 'this is the field for single entry' (fixed side)
                 for example
                             'Cash': Entry(None, 0, 0, transaction)
                             'Sale': Entry(None, 0, 1, transaction)
                             'Sale Tax': Entry(None, 0, 1, transaction)
-          - [] (list) means: 'this is field for multiple entries' (free account side)
+          - [] (list) means: 'this is the field for multiple entries' (free side)
                 for example
                             'Account': []
         '''
