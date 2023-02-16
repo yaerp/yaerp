@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Any
 import uuid
 
-from yaerp.accounting.journal import Journal
+# from yaerp.accounting.journal import Journal
 from yaerp.accounting.entry import Entry
 
 # @dataclass(frozen=False)
@@ -27,7 +27,7 @@ class Transaction:
     is stored there.
     '''
 
-    def __init__(self, journal: Journal):
+    def __init__(self, journal):
         self.journal = journal
         if self.journal:
             self.fields = self.journal.define_fields(self)
@@ -83,7 +83,7 @@ class Transaction:
             raise RuntimeError('not balanced entries in this transaction')
         if self.journal is None:
             raise ValueError('transaction has no parent journal')
-        self.journal.commit_transaction(self)
+        self.journal.commit_separate(self)
 
     def __str__(self):
         return ''.join([

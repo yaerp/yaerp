@@ -84,22 +84,34 @@ def run():
     entry4 = Transaction(journal=journal)
     entry4.info('Date', '2023-01-03')
     entry4.info('Description', 'Purchase of the printer')
-    entry4.credit('Credit', account100, 58)
-    entry4.debit('Debit', account400, 58)
-    entry4.commit()
+    entry4.credit('Credit', account100, 158)
+    entry4.debit('Debit', account400, 158)
+    #entry4.commit()
 
     entry5 = Transaction(journal=journal)
-    entry5.info('Date', '2023-01-03')
+    entry5.info('Date', '2023-01-04')
     entry5.info('Description', 'Accept the printer as a cost')
-    entry5.debit('Debit', account500, 58)
-    entry5.credit('Credit', account400, 58)
-    entry5.commit()
+    entry5.debit('Debit', account500, 258)
+    entry5.credit('Credit', account400, 258)
+    #entry5.commit()
 
-    print(account100.get_debit(predicate=lambda post: '2022' in post.transaction.fields['Date']))
-    print(account100.get_debit(predicate=lambda post: '2023' in post.transaction.fields['Date']))
+    entry6 = Transaction(journal=journal)
+    entry6.info('Date', '2023-01-05')
+    entry6.info('Description', 'Accept the printer as a cost')
+    entry6.debit('Debit', account500, 258)
+    entry6.credit('Credit', account400, 258)
+    #entry5.commit()
 
-    print(account200.get_credit(predicate=lambda post: '2022' in post.transaction.fields['Date']))
-    print(account200.get_credit(predicate=lambda post: '2023' in post.transaction.fields['Date']))
+    info = Transaction(journal=journal)
+    info.info('Date', '2023-01-14')
+    info.info('Description', 'Summary entry')
+    journal.commit_cumulate([entry4, entry5, entry6], info)
+
+    #print(account100.get_debit(predicate=lambda post: '2022' in post.transaction.fields['Date']))
+    #print(account100.get_debit(predicate=lambda post: '2023' in post.transaction.fields['Date']))
+
+    #print(account200.get_credit(predicate=lambda post: '2022' in post.transaction.fields['Date']))
+    #print(account200.get_credit(predicate=lambda post: '2023' in post.transaction.fields['Date']))
 
     i = 1
     c = 37
@@ -168,11 +180,11 @@ def run():
     # canvas = render_entry(entry2, col=3, col_len=37)
     # print(canvas)
 
-    canvas = render_entries([entry1, entry2, entry3, entry4, entry5], layout=render_layout['terminal-120-2'])
+    canvas = render_entries([entry1, entry2, entry3, entry4, entry5, entry6], layout=render_layout['terminal-120-2'])
 
 
-    for field in entry3.fields.values():
-        print(field)
+    #for field in entry3.fields.values():
+    #    print(field)
 
 if __name__ == "__main__":
     run()

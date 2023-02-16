@@ -18,7 +18,7 @@ class TestEntry(unittest.TestCase):
         self.assertEqual(post.account, self.account)
         self.assertEqual(post.amount, 234)
         self.assertEqual(post.side, 1)
-        self.assertEqual(post.transaction, tran)
+        self.assertEqual(post.identifier, tran)
 
 if __name__ == '__main__':
     unittest.main()

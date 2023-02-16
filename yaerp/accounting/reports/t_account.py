@@ -254,7 +254,7 @@ def render_entries(transaction_list, layout=None):
     account_list.sort(key=lambda acc: acc.tag)
     # render
 
-    print(render(*account_list, post_predicate=lambda post: post.transaction in transaction_list, 
+    print(render(*account_list, post_predicate=lambda post: post.identifier in transaction_list, 
                     layout=layout, entry_counter=tran_counter))
 
     for tran in tran_counter.keys():
@@ -313,7 +313,7 @@ def t_form_gen(account, post_predicate, col_len,layout=None, entry_counter=None)
     for post in filter(post_predicate, account.posts):
         post_info = post.get_info()        
         # description = f'({entry_counter[post.entry]}.{post_info[1]})'
-        description = f'({entry_counter[post.transaction]})'
+        description = f'({entry_counter[post.identifier]})'
         yield from t_account.row_generator(description, currency.raw2str(post.amount), post.side)
 
 def vertical_space_gen(col_len):
