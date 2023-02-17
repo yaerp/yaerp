@@ -1,6 +1,6 @@
 import unittest
 
-from yaerp.accounting.transaction import Transaction
+from yaerp.accounting.journal_entry import JournalEntry
 from yaerp.accounting.ledger import Ledger
 from yaerp.accounting.journal import Journal, JournalError
 from yaerp.accounting.account import Account
@@ -26,7 +26,7 @@ class TestJournal(unittest.TestCase):
         self.assertIsInstance(empty_journal.ledger, Ledger)
 
     def test_commit_transaction(self):
-        tran = Transaction(self.journal, {'Title': 'Entry 1'}, [], [])
+        tran = JournalEntry(self.journal, {'Title': 'Entry 1'}, [], [])
         tran.debit(self.account1, 599)
         tran.credit(self.account2, 599)
         self.assertEqual(len(self.journal.transactions), 0)
@@ -37,13 +37,13 @@ class TestJournal(unittest.TestCase):
             self.fail()
         except JournalError:
             self.assertEqual(len(self.journal.transactions), 1)
-        same_records_tran = Transaction({'Title': 'Entry 2'}, tran.debit_fields, tran.credit_fields)
+        same_records_tran = JournalEntry({'Title': 'Entry 2'}, tran.debit_fields, tran.credit_fields)
         try:
             self.journal.commit_transaction(same_records_tran)
             self.fail()
         except JournalError:
             self.assertEqual(len(self.journal.transactions), 1)
-        new_tran = Transaction(self.journal, {'Title': 'Entry 3'}, [], [])
+        new_tran = JournalEntry(self.journal, {'Title': 'Entry 3'}, [], [])
         new_tran.debit(self.account2, 12)
         new_tran.credit(self.account1, 12)
         self.journal.commit_transaction(new_tran)

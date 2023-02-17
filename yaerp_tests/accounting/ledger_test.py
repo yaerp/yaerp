@@ -1,10 +1,10 @@
 import unittest
 
-from yaerp.accounting.transaction import Transaction
+from yaerp.accounting.journal_entry import JournalEntry
 from yaerp.accounting.ledger import Ledger
 from yaerp.accounting.journal import Journal
 from yaerp.accounting.account import Account
-from yaerp.accounting.entry import Entry
+from yaerp.accounting.account_entry import AccountEntry
 
 class TestLedger(unittest.TestCase):
 

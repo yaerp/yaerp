@@ -1,27 +1,28 @@
 import copy
 # from yaerp.accounting.ledger import Ledger
-from yaerp.accounting.entry import Entry
-from yaerp.accounting.transaction import Transaction
+from yaerp.accounting.account_entry import AccountEntry
+from yaerp.accounting.journal_entry import JournalEntry
+from yaerp.accounting.post import Post
 
 class Journal:
     '''
     * Journal
     Journal is a book that contain a sequence of business transactions.
 
-      Business transaction, also known as 'journal entry', contains the data
+      Business transaction, also known as 'Journal Entry', contains the data
     significant to a single event involving the movement/exchange of value
     (such as money, goods, services). These events must be measurable
     in monetary value so the company can record them for accounting purposes.
 
-    Example of business transactions:
+    Example of business transactions that can be a Journal Entry:
      - sale,
      - purchase,
      - adjustment,
      - depreciation,
      - opening and closing entries.
 
-      Range of data required to store in each transaction is determined by Journal.
-    Look into define_fields() method to find out the actual format of transaction.
+      Range of data required to store in each Journal Entry is determined by Journal.
+    Look into define_fields() method to read the actual Journal Entry structure.
     Note that new Journal class, derived from this class can define completly new
     set of fields.
     '''
@@ -32,62 +33,68 @@ class Journal:
         self.ledger = ledger
         if ledger:
             ledger.register_journal(self)       
-        self.transactions = []
+        self.journal_entries = []
 
-    def commit_separate(self, transactions):
-        ''' Post transaction entries to the ledger.
-            Each transaction involves new ledger entries. '''
-        if not hasattr(transactions, '__iter__'):
-            self.validate_new_transaction(transactions)
-            self.ledger.commit_transaction(self, transactions)
+    def post_separate(self, journal_entries):
+        ''' Post journal entries to the ledger.
+            Each journal entry involves new account entries in the ledger. '''
+        if not hasattr(journal_entries, '__iter__'):
+            self.validate_new_journal_entry(journal_entries)
+            self.ledger.post_journal_entry(self, journal_entries)
             return
-        for transaction in transactions:
-            self.validate_new_transaction(transaction)
-        for transaction in transactions:
-            self.ledger.commit_transaction(self, transaction)
+        for journal_entry in journal_entries:
+            self.validate_new_journal_entry(journal_entry)
+        for journal_entry in journal_entries:
+            self.ledger.post_journal_entry(self, journal_entry)
 
-    def commit_cumulate(self, transactions, summary_info):
-        ''' Post transactions entries to the ledger.
-            Summary of all transactions involves new ledger entries. '''
-        if not hasattr(transactions, '__iter__'):
-            ValueError('\'transactions\' parameter must be iterable')
+    def post_cumulate(self, journal_entries, summary_info):
+        ''' Post journal entries to the ledger.
+            Summary of all journal entries involves new account entries in the ledger. '''
+        if not hasattr(journal_entries, '__iter__'):
+            ValueError('\'journal_entries\' must be iterable')
 
-        for transaction in transactions:
-            self.validate_new_transaction(transaction)
+        for journal_entry in journal_entries:
+            self.validate_new_journal_entry(journal_entry)
 
-        summary_entries = {}
-        for transaction in transactions:
-            for name, value in transaction.fields.items():
-                if isinstance(value, Entry):
+        summary_account_entries = {}
+        for journal_entry in journal_entries:
+            for name, value in journal_entry.fields.items():
+                if isinstance(value, AccountEntry):
                     key = f'{value.side}@{value.account.tag}'
-                    if key in summary_entries:
-                        summary_entries[key] += value
+                    if key in summary_account_entries:
+                        summary_account_entries[key] += value
                     else:
-                        summary_entries[key] = Entry(value.account, value.amount,
-                                                     value.side,
-                                                     summary_info)
+                        summary_account_entries[key] = AccountEntry(
+                            value.account,
+                            value.amount,
+                            value.side,
+                            summary_info,
+                            None)
 
                 if isinstance(value, list):
                     NotImplemented('not yet')
 
-        for sum_key in sorted(summary_entries.keys()):
-            print(f"{sum_key}: {summary_entries[sum_key]}")
+        # for sum_key in sorted(summary_account_entries.keys()):
+        #     print(f"{sum_key}: {summary_account_entries[sum_key]}")
 
-        summary_transaction = copy.deepcopy(summary_info)
+        summary_journal_entry = copy.deepcopy(summary_info)
         for key, value in summary_info.fields.items():
-            if isinstance(value, (Entry, list)):
-                del summary_transaction.fields[key]
+            if isinstance(value, (AccountEntry, list)):
+                del summary_journal_entry.fields[key]
 
-        summary_transaction.fields['Account'] = []
-        for key in sorted(summary_entries):
-            summary_transaction.fields['Account'].append(summary_entries[key])
+        summary_journal_entry.fields['Account'] = []
+        for key in sorted(summary_account_entries):
+            summary_journal_entry.fields['Account'].append(summary_account_entries[key])
 
-        self.validate_new_transaction(summary_transaction)
-        self.ledger.commit_transaction(self, summary_transaction)
+        self.validate_new_journal_entry(summary_journal_entry)
+        post = self.ledger.post_summary_entry(self, summary_journal_entry)
+        for journal_entry in journal_entries:
+            journal_entry.post = post
 
-    def define_fields(self, transaction):
+
+    def define_fields(self, journal_entry):
         '''
-        Define the data structure for transactions stored in this Journal.
+        Data structure for Journal Entries.
         Each transaction is stored as set of the following pairs:
 
         FIELD_NAME: FIELD_VALUE
@@ -99,31 +106,40 @@ class Journal:
                 for example
                             'Date': None
                             'Description': None
-          - Entry object means: 'this is the place for single entry' (fixed side)
+          - Entry object means: 'this is the place for single account entry' (fixed side)
                 for example
                             'Cash': Entry(None, 0, 0, transaction)
                             'Sale': Entry(None, 0, 1, transaction)
                             'Sale Tax': Entry(None, 0, 1, transaction)
-          - [] (list) means: 'this is the place for multiple entries' (free side)
+          - [] (list) means: 'this is the place for multiple account entries' (free side)
                 for example
                             'Account': []
         '''
         return {
-            'Date': None,                               # info
-            'Description': None,                        # info
-            'Debit': Entry(None, 0, 0, transaction),    # debit entry
-            'Credit': Entry(None, 0, 1, transaction)    # credit entry
+            'Date':         None,   # info
+            'Description':  None,   # info
+            'Account':      []      # debit/credit account entries
+            # 'Debit': AccountEntry(None, 0, 0, journal_entry, None),    # debit entry
+            # 'Credit': AccountEntry(None, 0, 1, journal_entry, None)    # credit entry
         }
 
-    def validate_new_transaction(self, transaction):
-        if transaction in self.transactions:
-            raise ValueError('the specified transaction already exist in the journal')  
-        for field in transaction.fields.values():
-            if isinstance(field, Entry):
-                if not field.identifier:
-                    raise ValueError('entry has no parent identifier')
-                if field.identifier != transaction:
-                    raise ValueError('entry has invalid parent identifier')
+    def validate_new_journal_entry(self, journal_entry):
+        if journal_entry in self.journal_entries:
+            raise ValueError('the specified entry already exist in the journal')
+        for field in journal_entry.fields.values():
+            if isinstance(field, AccountEntry):
+                if not field.journal_entry:
+                    raise ValueError('account entry has no journal entry')
+                if field.journal_entry != journal_entry:
+                    raise ValueError('account entry has invalid journal entry')
     
     def __str__(self) -> str:
         return self.tag
+
+# class GeneralJournal(Journal):
+#     def define_fields(self, journal_entry):
+#         return {
+#             'Date':         None,   # info
+#             'Description':  None,   # info
+#             'Account':      []      # debit/credit account entries
+#         }

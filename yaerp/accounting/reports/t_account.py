@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from itertools import chain
 import textwrap
 
-from yaerp.accounting.transaction import Transaction
-from yaerp.accounting.entry import Entry
+from yaerp.accounting.journal_entry import JournalEntry
+from yaerp.accounting.account_entry import AccountEntry
 from yaerp.report.typesetting.columns import simultaneous_column_generator
 
 @dataclass
@@ -230,8 +230,8 @@ class T_account:
             return side_formatter.format(amount, description)
 
 
-def render_entry(entry: Transaction, col=2, col_len=37):
-    account_set = set(field.account for field in entry.fields.values() if isinstance(field, Entry))
+def render_entry(entry: JournalEntry, col=2, col_len=37):
+    account_set = set(field.account for field in entry.fields.values() if isinstance(field, AccountEntry))
     account_list = list(account_set)
     account_list.sort(key=lambda acc: acc.tag)
     return render(*account_list, post_predicate = lambda post: post.entry == entry, col=col, col_len=col_len)
@@ -248,13 +248,13 @@ def render_entries(transaction_list, layout=None):
         tran_counter[tran] = number_label
         # find engaged accounts
         for field in tran.fields.values():
-            if isinstance(field, Entry):
+            if isinstance(field, AccountEntry):
                 accounts_dict[field.account] = field.account
     account_list = list(accounts_dict.values())
     account_list.sort(key=lambda acc: acc.tag)
     # render
 
-    print(render(*account_list, post_predicate=lambda post: post.identifier in transaction_list, 
+    print(render(*account_list, post_predicate=lambda post: post.journal_entry in transaction_list, 
                     layout=layout, entry_counter=tran_counter))
 
     for tran in tran_counter.keys():
@@ -313,7 +313,7 @@ def t_form_gen(account, post_predicate, col_len,layout=None, entry_counter=None)
     for post in filter(post_predicate, account.posts):
         post_info = post.get_info()        
         # description = f'({entry_counter[post.entry]}.{post_info[1]})'
-        description = f'({entry_counter[post.identifier]})'
+        description = f'({entry_counter[post.journal_entry]})'
         yield from t_account.row_generator(description, currency.raw2str(post.amount), post.side)
 
 def vertical_space_gen(col_len):
