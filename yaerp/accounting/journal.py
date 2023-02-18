@@ -57,25 +57,35 @@ class Journal:
             self.validate_new_journal_entry(journal_entry)
 
         summary_account_entries = {}
+
+        def add_to_summary(account_entry):
+            if not account_entry.amount or not account_entry.account:
+                return
+            if account_entry.post:
+                raise RuntimeError(f'already posted: account entry \'{account_entry}\', journal entry \'{account_entry.journal_entry}\'')
+            key = f'{account_entry.side}@{account_entry.account.tag}'
+            if key in summary_account_entries:
+                summary_account_entries[key] += account_entry
+            else:
+                summary_account_entries[key] = AccountEntry(
+                    account_entry.account,
+                    account_entry.amount,
+                    account_entry.side,
+                    summary_info,
+                    None)
+
         for journal_entry in journal_entries:
             for name, value in journal_entry.fields.items():
                 if isinstance(value, AccountEntry):
-                    key = f'{value.side}@{value.account.tag}'
-                    if key in summary_account_entries:
-                        summary_account_entries[key] += value
-                    else:
-                        summary_account_entries[key] = AccountEntry(
-                            value.account,
-                            value.amount,
-                            value.side,
-                            summary_info,
-                            None)
-
+                    add_to_summary(value)
                 if isinstance(value, list):
-                    NotImplemented('not yet')
+                    for account_entry in value:
+                        add_to_summary(account_entry)
 
         # for sum_key in sorted(summary_account_entries.keys()):
         #     print(f"{sum_key}: {summary_account_entries[sum_key]}")
+
+        # build summary_entry
 
         summary_journal_entry = copy.deepcopy(summary_info)
         for key, value in summary_info.fields.items():
@@ -89,8 +99,8 @@ class Journal:
         self.validate_new_journal_entry(summary_journal_entry)
         post = self.ledger.post_summary_entry(self, summary_journal_entry)
         for journal_entry in journal_entries:
-            journal_entry.post = post
-
+            # journal_entry.post = post
+            journal_entry.set_posted(post)
 
     def define_fields(self, journal_entry):
         '''

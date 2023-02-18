@@ -4,15 +4,15 @@ from yaerp.accounting.journal import Journal
 from yaerp.accounting.account import Account
 from yaerp.accounting.journal_entry import JournalEntry
 from yaerp.accounting.account_entry import AccountEntry
-from yaerp.accounting.reports.t_account import T_account, render_entries, render_entry, render_layout
+from yaerp.accounting.reports.t_account import T_account, render_journal_entries, render_journal_entries2, render_journal_entry, render_journal_entry2, render_layout
 from yaerp.model.money import Money as M
 from yaerp.model.currency import Currency as C
 from yaerp.report.typesetting.columns import simultaneous_column_generator as typeset
 
 def run():
     currency = C('PLN', '985', 100, "Polish Złoty", 'zł', 'gr')
-    print(currency.amount2raw(100.78))
-    print(currency.raw2str(10078))
+    # print(currency.amount2raw(100.78))
+    # print(currency.raw2str(10078))
     # money = M(12300, c)
     # print(money)
 
@@ -68,8 +68,12 @@ def run():
     entry2.info('Date', '2023-01-04')
     entry2.info('Description', 'Example of Sales')
     entry2.credit('Sale', account200, 3553300)
+    # entry2.credit('Tax', account300, 0)
     entry2.debit('Cash', account100, 3553300)
-    entry2.commit()
+    # entry2.commit()
+
+
+
 
     # TODO: if Entry above contain specified account this means the account is fixed
 
@@ -83,31 +87,42 @@ def run():
     entry3.credit('Tax', account300, 4000)
     entry3.commit()
 
+
+
     entry4 = JournalEntry(journal=journal)
     entry4.info('Date', '2023-01-03')
     entry4.info('Description', 'Purchase of the printer')
     entry4.credit('Account', account100, 158)
     entry4.debit('Account', account400, 158)
-    #entry4.commit()
+    entry4.commit()
 
     entry5 = JournalEntry(journal=journal)
     entry5.info('Date', '2023-01-04')
     entry5.info('Description', 'Accept the printer as a cost')
-    entry5.debit('Debit', account500, 258)
-    entry5.credit('Credit', account400, 258)
-    #entry5.commit()
+    entry5.credit('Account', account500, 258)
+    entry5.debit('Account', account400, 258)
+    # entry5.commit()
 
     entry6 = JournalEntry(journal=journal)
     entry6.info('Date', '2023-01-05')
     entry6.info('Description', 'Accept the printer as a cost')
-    entry6.debit('Debit', account500, 258)
-    entry6.credit('Credit', account400, 258)
-    #entry5.commit()
+    entry6.debit('Account', account500, 258)
+    entry6.credit('Account', account400, 258)
+    # entry6.commit()
 
     info = JournalEntry(journal=journal)
     info.info('Date', '2023-01-14')
     info.info('Description', 'Summary entry')
-    journal.post_cumulate([entry4, entry5, entry6], info)
+    journal.post_cumulate([entry5, entry6], info)
+
+    print(render_journal_entries2([entry2, entry3, entry4, entry5, entry6], layout=render_layout['terminal-120-3']))
+
+    # print(f"entry1 post: {entry1.post}")
+    # print(f"entry2 post: {entry2.post}")
+    # print(f"entry3 post: {entry3.post}")
+    # print(f"entry4 post: {entry4.post}")
+    # print(f"entry5 post: {entry5.post}")
+    # print(f"entry6 post: {entry6.post}")
 
     #print(account100.get_debit(predicate=lambda post: '2022' in post.transaction.fields['Date']))
     #print(account100.get_debit(predicate=lambda post: '2023' in post.transaction.fields['Date']))
@@ -182,11 +197,9 @@ def run():
     # canvas = render_entry(entry2, col=3, col_len=37)
     # print(canvas)
 
-    canvas = render_entries([entry1, entry2, entry3, entry4, entry5, entry6], layout=render_layout['terminal-120-2'])
 
 
-    #for field in entry3.fields.values():
-    #    print(field)
+    # canvas = render_journal_entries([entry1, entry2, entry3, entry4, entry5, entry6], layout=render_layout['terminal-120-2'])
 
 if __name__ == "__main__":
     run()

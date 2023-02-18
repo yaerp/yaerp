@@ -49,6 +49,8 @@ class AccountEntry:
         journal_field_name = info[0]
         currency = self.account.currency
         if self.side == 0:
-            return f'Dr(\"[{self.account.tag}] {self.account.name}\", {currency.raw2str(self.amount)}) - src: \"{self.journal_entry.journal.tag}/{journal_field_name}\"'
+            return f'Dr(\"[{self.account.tag}] {self.account.name}\", {currency.raw2str(self.amount)})'
+            #return f'Dr(\"[{self.account.tag}] {self.account.name}\", {currency.raw2str(self.amount)}) - src: \"{self.journal_entry.journal.tag}/{journal_field_name}\"'
         else:
-            return f'Cr(\"[{self.account.tag}] {self.account.name}\", {currency.raw2str(self.amount)}) - src: \"{self.journal_entry.journal.tag}/{journal_field_name}\"'
+            return f'Cr(\"[{self.account.tag}] {self.account.name}\", {currency.raw2str(self.amount)})'
+            # return f'Cr(\"[{self.account.tag}] {self.account.name}\", {currency.raw2str(self.amount)}) - src: \"{self.journal_entry.journal.tag}/{journal_field_name}\"'

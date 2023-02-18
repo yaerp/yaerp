@@ -229,39 +229,96 @@ class T_account:
             side_formatter = '{:<' + str(self.max_amount_length) + '} {:>' + str(max_desc_length) + '}'
             return side_formatter.format(amount, description)
 
-
-def render_entry(entry: JournalEntry, col=2, col_len=37):
+def render_journal_entry(entry: JournalEntry, col=2, col_len=37):
     account_set = set(field.account for field in entry.fields.values() if isinstance(field, AccountEntry))
     account_list = list(account_set)
     account_list.sort(key=lambda acc: acc.tag)
-    return render(*account_list, post_predicate = lambda post: post.entry == entry, col=col, col_len=col_len)
+    return render(*account_list, account_entry_predicate = lambda post: post.entry == entry, col=col, col_len=col_len)
 
-def render_entries(transaction_list, layout=None):
-    tran_counter = {}
+def render_journal_entry2(journal_entry: JournalEntry, layout):
+    accounts_engaged = []
+    accounts_entries = []
+    for field in journal_entry.fields.values():
+        if isinstance(field, AccountEntry):
+            if field.account and field.amount:
+                accounts_engaged.append(field.account)
+                accounts_entries.append(field)
+        elif isinstance(field, list):
+            for account_entry in field:
+                if account_entry.account and account_entry.amount:
+                    accounts_engaged.append(account_entry.account)
+                    accounts_entries.append(account_entry)
+    # remove recurring accounts
+    accounts_engaged = list(set(accounts_engaged))
+    accounts_engaged.sort(key=lambda acc: acc.tag)
+    return render2(accounts_engaged, accounts_entries, layout=layout)
+
+def render_journal_entries(journal_entry_list, layout=None):
+    journal_entry_counter = {}
     number_label = 0
     accounts_dict = {}
-    for tran in transaction_list:
+    for journal_entry in journal_entry_list:
         # set 'label' for entry
-        if tran in tran_counter.keys():
+        if journal_entry in journal_entry_counter:
             continue
         number_label += 1
-        tran_counter[tran] = number_label
+        journal_entry_counter[journal_entry] = number_label
         # find engaged accounts
-        for field in tran.fields.values():
-            if isinstance(field, AccountEntry):
+        for field in journal_entry.fields.values():
+            if isinstance(field, AccountEntry) and field.account:
                 accounts_dict[field.account] = field.account
+            elif isinstance(field, list):
+                for account_entry in field:
+                    if account_entry.account:
+                        accounts_dict[account_entry.account] = account_entry.account
     account_list = list(accounts_dict.values())
     account_list.sort(key=lambda acc: acc.tag)
     # render
 
-    print(render(*account_list, post_predicate=lambda post: post.journal_entry in transaction_list, 
-                    layout=layout, entry_counter=tran_counter))
+    # def select_account_entry(account_entry):
+        # account_entry.post == 
 
-    for tran in tran_counter.keys():
-        print(f"{tran_counter[tran]}. {tran}")
+    print(render(*account_list,
+        # account_entry_predicate=select_account_entry, 
+        account_entry_predicate=lambda entry: entry.journal_entry in journal_entry_list, 
+        layout=layout,
+        entry_counter=journal_entry_counter))
 
+    for journal_entry in journal_entry_counter:
+        print(f"{journal_entry_counter[journal_entry]}. {journal_entry}")
 
-def render(*accounts, post_predicate=None, layout=None, entry_counter=None):
+def render_journal_entries2(journal_entry_list, layout=None):
+    journal_entry_counter = {}
+    number_label = 0
+    accounts_engaged = []
+    accounts_entries = []
+    for journal_entry in journal_entry_list:
+        # set 'label' for entry
+        if journal_entry in journal_entry_counter:
+            continue
+        number_label += 1
+        journal_entry_counter[journal_entry] = number_label
+        # find engaged accounts
+        for field in journal_entry.fields.values():
+            if isinstance(field, AccountEntry):
+                if field.account and field.amount:
+                    accounts_engaged.append(field.account)
+                    accounts_entries.append(field)
+            elif isinstance(field, list):
+                for account_entry in field:
+                    if account_entry.account and account_entry.amount:
+                        accounts_engaged.append(account_entry.account)
+                        accounts_entries.append(account_entry)
+    # remove recurring accounts
+    accounts_engaged = list(set(accounts_engaged))
+    accounts_engaged.sort(key=lambda acc: acc.tag)
+
+    print(render2(accounts_engaged, accounts_entries, layout=layout, entry_counter=journal_entry_counter))
+
+    for journal_entry in journal_entry_counter:
+        print(f"{journal_entry_counter[journal_entry]}. {journal_entry}")
+
+def render(*accounts, account_entry_predicate=None, layout=None, entry_counter=None):
     # col = layout.number_of_columns
     # col_len = layout.t_account_width
     # amount_width = layout.t_account_amount_width
@@ -279,7 +336,37 @@ def render(*accounts, post_predicate=None, layout=None, entry_counter=None):
             # if next run
             col_idx = account_idx % layout.number_of_columns
             column_generators[col_idx].append(vertical_space_gen(layout.t_account_width))
-        column_generators[col_idx].append(t_form_gen(account, post_predicate, None, layout=layout, entry_counter=entry_counter))
+        column_generators[col_idx].append(t_form_gen(account, account_entry_predicate, None, layout=layout, entry_counter=entry_counter))
+
+
+    for col_idx, column in enumerate(column_generators):
+        # convert list of generators to the chain
+        column_generators[col_idx] = chain.from_iterable(column_generators[col_idx])
+
+    result = ''
+    for line in simultaneous_column_generator(
+                    column_generators=column_generators,
+                    empty_column_lines=empty_column,
+                    indent_width = layout.first_column_indent, 
+                    gutter_width = layout.gutter_between_columns):
+        result += line
+    return result
+
+def render2(accounts, accounts_entries, layout=None, entry_counter=None):
+    column_generators = []
+    empty_column = []
+    col_idx = 0
+    for account_idx, account in enumerate(accounts):
+        if account_idx < layout.number_of_columns:
+            # if first run
+            col_idx = account_idx
+            column_generators.append([])   
+            empty_column.append(blank_row(layout.t_account_width))
+        else:
+            # if next run
+            col_idx = account_idx % layout.number_of_columns
+            column_generators[col_idx].append(vertical_space_gen(layout.t_account_width))
+        column_generators[col_idx].append(t_form_gen2(account, accounts_entries, layout=layout, entry_counter=entry_counter))
 
 
     for col_idx, column in enumerate(column_generators):
@@ -315,6 +402,29 @@ def t_form_gen(account, post_predicate, col_len,layout=None, entry_counter=None)
         # description = f'({entry_counter[post.entry]}.{post_info[1]})'
         description = f'({entry_counter[post.journal_entry]})'
         yield from t_account.row_generator(description, currency.raw2str(post.amount), post.side)
+
+def t_form_gen2(account, account_entry_list, layout=None, entry_counter=None):
+    t_account = T_account(account.tag, account.name, max_length=layout.t_account_width, max_amount_length=layout.t_account_amount_width, leading_spaces=0, new_line='', box=T_account.unicode_bold_table_box)  
+    yield from t_account.header_generator()
+
+    if not entry_counter:
+        entry_counter = {}
+        counter = 0
+        for account_entry in account_entry_list:
+            # collect entries
+            if account_entry.journal_entry in entry_counter.keys():
+                continue
+            counter += 1
+            entry_counter[account_entry.journal_entry] = counter
+
+    currency = account.currency
+    for account_entry in account_entry_list:
+        if account_entry.account != account:
+            continue
+        # post_info = account_entry.get_info()        
+        # description = f'({entry_counter[post.entry]}.{post_info[1]})'
+        description = f'({entry_counter[account_entry.journal_entry]})'
+        yield from t_account.row_generator(description, currency.raw2str(account_entry.amount), account_entry.side)
 
 def vertical_space_gen(col_len):
     yield blank_row(col_len)

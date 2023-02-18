@@ -32,15 +32,17 @@ class JournalEntry:
 
     def is_balanced(self):
         result_dt, result_ct = 0, 0
-        for post in self.fields.values():
-            if not isinstance(post, AccountEntry):
+        for field in self.fields.values():
+            if not isinstance(field, AccountEntry):
                 continue
-            if post.side != 0 and post.side != 1:
+            if field.side != 0 and field.side != 1:
                 raise ValueError('account side must be equal to 0 or 1')
-            if post.side == 0:
-                result_dt += post.amount
+            if field.amount and not field.account:
+                raise ValueError('entry with no account has non zero amount')
+            if field.side == 0:
+                result_dt += field.amount
             else:
-                result_ct += post.amount
+                result_ct += field.amount
         return result_dt == result_ct
 
     def info(self, field_tag: str, field_value: Any):
@@ -81,8 +83,40 @@ class JournalEntry:
             raise ValueError('transaction has no parent journal')
         self.journal.post_separate(self)
 
+    def set_posted(self, post):
+        if not post:
+            raise ValueError('post is None')
+        for name, value in self.fields.items():
+            if isinstance(value, AccountEntry):
+                if value.amount and value.account:
+                        self.fields[name] = AccountEntry(
+                            value.account,
+                            value.amount,
+                            value.side,
+                            value.journal_entry,
+                            post
+                            )
+            elif isinstance(value, list):
+                for idx, account_entry in enumerate(value):
+                    if account_entry.amount and account_entry.account:
+                        value[idx] = AccountEntry(
+                            account_entry.account,
+                            account_entry.amount,
+                            account_entry.side,
+                            account_entry.journal_entry,
+                            post
+                            )
+        self.post = post
+
     def __str__(self):
-        return ''.join([
+        post_info = '/not posted/'
+        if self.post:
+            if self.post.summary_entry:
+                post_info = '/posted as summary/'
+            else:
+                post_info = '/posted/'
+        return ' '.join([
             f"{self.journal.tag}:  ",
-            "; ".join([f"{str(value)}" for value in self.fields.values() if isinstance(value, (str, int, float))])
+            "; ".join([f"{str(value)}" for value in self.fields.values() if isinstance(value, (str, int, float))]),
+            f'{post_info}'
         ])

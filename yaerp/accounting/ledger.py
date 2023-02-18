@@ -15,7 +15,7 @@ class Ledger:
         self.__validate_journal_entry(journal, journal_entry)
         post = Post(uuid.uuid4().int, False)
         for name, field in journal_entry.fields.items():
-            if isinstance(field, AccountEntry):
+            if isinstance(field, AccountEntry) and field.amount:
                 posted_account_entry = AccountEntry(field.account, 
                                                     field.amount, 
                                                     field.side, 
@@ -31,9 +31,9 @@ class Ledger:
                                                         element.journal_entry, 
                                                         post)
                     self.__append_account_entry(posted_account_entry)
-                    field[idx] = posted_account_entry           
+                    field[idx] = posted_account_entry 
         journal.journal_entries.append(journal_entry)
-        journal_entry.post = post 
+        journal_entry.post = post
         
     def post_summary_entry(self, journal, summary_journal_entry):
         self.__validate_journal_entry(journal, summary_journal_entry)
@@ -63,9 +63,9 @@ class Ledger:
                     self.__validate_account_entry(journal, element)
 
     def __validate_account_entry(self, journal, account_entry):
-        if account_entry.account is None:
-            raise ValueError('account entry has no parent account')
-        if account_entry.account not in self.accounts.values():
+        if account_entry.amount and not account_entry.account:
+            raise ValueError('non-zero account entry has no parent account')
+        if account_entry.account and account_entry.account not in self.accounts.values():
             raise ValueError('account entry has parent account associated with an another ledger')
         # if entry.transaction is None:
         #     raise ValueError('parent transaction is None')
