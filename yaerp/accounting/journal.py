@@ -35,21 +35,20 @@ class Journal:
             ledger.register_journal(self)       
         self.journal_entries = []
 
-    def post_separate(self, journal_entries):
-        ''' Post journal entries to the ledger.
-            Each journal entry involves new account entries in the ledger. '''
-        if not hasattr(journal_entries, '__iter__'):
-            self.validate_new_journal_entry(journal_entries)
-            self.ledger.post_journal_entry(self, journal_entries)
-            return
-        for journal_entry in journal_entries:
-            self.validate_new_journal_entry(journal_entry)
-        for journal_entry in journal_entries:
-            self.ledger.post_journal_entry(self, journal_entry)
+    # def post_separate(self, journal_entries):
+    #     ''' Post journal entries to the ledger.
+    #         Each journal entry involves new account entries in the ledger. '''
+    #     if not hasattr(journal_entries, '__iter__'):
+    #         self.validate_new_journal_entry(journal_entries)
+    #         self.ledger.post_journal_entry(self, journal_entries)
+    #         return
+    #     for journal_entry in journal_entries:
+    #         self.validate_new_journal_entry(journal_entry)
+    #     for journal_entry in journal_entries:
+    #         self.ledger.post_journal_entry(self, journal_entry)
 
-    def post_cumulate(self, journal_entries, summary_info):
-        ''' Post journal entries to the ledger.
-            Summary of all journal entries involves new account entries in the ledger. '''
+    def post_to_ledger(self, journal_entries, summary_info):
+        ''' Aggregate journal entries into the 'total entry' and post this to the ledger. '''
         if not hasattr(journal_entries, '__iter__'):
             ValueError('\'journal_entries\' must be iterable')
 
@@ -100,7 +99,7 @@ class Journal:
         post = self.ledger.post_summary_entry(self, summary_journal_entry)
         for journal_entry in journal_entries:
             # journal_entry.post = post
-            journal_entry.set_posted(post)
+            journal_entry._set_posted(post)
 
     def define_fields(self, journal_entry):
         '''

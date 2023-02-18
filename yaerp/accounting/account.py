@@ -8,15 +8,15 @@ class Account:
         if self.ledger:
             ledger.register_account(self)
         self.currency = currency
-        self.posts = [] # only Ledger should modify this list
+        self.posted_entries = [] # only Ledger should modify this list
 
     def append_entry(self, post):
         ''' A ledger invoke this function when Entry is in the process of posting. '''
         if post.account != self:
             raise ValueError('post is assigned to an another account')
-        if post in self.posts:
+        if post in self.posted_entries:
             raise ValueError('post is already added')
-        self.posts.append(post)
+        self.posted_entries.append(post)
 
     def get_debit(self, predicate=None):
         ''' Amount (raw integer) of debit posts. '''
@@ -32,17 +32,17 @@ class Account:
         ''' Create post iterator. '''
         if dt_posts and ct_posts:
             if predicate:
-                return filter(predicate, self.posts)
+                return filter(predicate, self.posted_entries)
             else:
-                return iter(self.posts)
+                return iter(self.posted_entries)
         if dt_posts and not ct_posts:
             if predicate:
-                return filter(predicate, filter(lambda p: p.side == 0, self.posts))
+                return filter(predicate, filter(lambda p: p.side == 0, self.posted_entries))
             else:
-                return filter(lambda p: p.side == 0, self.posts)
+                return filter(lambda p: p.side == 0, self.posted_entries)
         if not dt_posts and ct_posts:
             if predicate:
-                return filter(predicate, filter(lambda p: p.side == 1, self.posts))
+                return filter(predicate, filter(lambda p: p.side == 1, self.posted_entries))
             else:
-                return filter(lambda p: p.side == 1, self.posts)
+                return filter(lambda p: p.side == 1, self.posted_entries)
         return iter([])

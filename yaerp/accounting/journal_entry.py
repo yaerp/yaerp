@@ -33,16 +33,25 @@ class JournalEntry:
     def is_balanced(self):
         result_dt, result_ct = 0, 0
         for field in self.fields.values():
-            if not isinstance(field, AccountEntry):
-                continue
-            if field.side != 0 and field.side != 1:
-                raise ValueError('account side must be equal to 0 or 1')
-            if field.amount and not field.account:
-                raise ValueError('entry with no account has non zero amount')
-            if field.side == 0:
-                result_dt += field.amount
-            else:
-                result_ct += field.amount
+            if isinstance(field, AccountEntry):
+                if field.side != 0 and field.side != 1:
+                    raise ValueError('account side must be equal to 0 or 1')
+                if field.amount and not field.account:
+                    raise ValueError('entry with no account has non zero amount')
+                if field.side == 0:
+                    result_dt += field.amount
+                else:
+                    result_ct += field.amount
+            elif isinstance(field, list):
+                for account_entry in field:
+                    if account_entry.side != 0 and account_entry.side != 1:
+                        raise ValueError('account side must be equal to 0 or 1')
+                    if account_entry.amount and not account_entry.account:
+                        raise ValueError('entry with no account has non zero amount')
+                    if account_entry.side == 0:
+                        result_dt += account_entry.amount
+                    else:
+                        result_ct += account_entry.amount
         return result_dt == result_ct
 
     def info(self, field_tag: str, field_value: Any):
@@ -75,15 +84,17 @@ class JournalEntry:
         else:
             raise RuntimeError(f'Journal field \'{field_tag}\' is not dedicated for debit/credit entries.')
 
-    def commit(self):
-        ''' Post this journal entry to the ledger '''
+    def post_to_ledger(self):
+        ''' Post this journal entry to the ledger (single post) '''
         if not self.is_balanced():
-            raise RuntimeError('not balanced entries in this transaction')
+            raise RuntimeError('not balanced journal entry')
         if self.journal is None:
-            raise ValueError('transaction has no parent journal')
-        self.journal.post_separate(self)
+            raise ValueError('journal entry has no parent journal')
+        self.journal.validate_new_journal_entry(self)
+        self.journal.ledger.post_journal_entry(self.journal, self)
+        # self.journal.post_separate(self)
 
-    def set_posted(self, post):
+    def _set_posted(self, post):
         if not post:
             raise ValueError('post is None')
         for name, value in self.fields.items():
@@ -112,9 +123,9 @@ class JournalEntry:
         post_info = '/not posted/'
         if self.post:
             if self.post.summary_entry:
-                post_info = '/posted as summary/'
+                post_info = '/aggregated post/'
             else:
-                post_info = '/posted/'
+                post_info = '/simple post/'
         return ' '.join([
             f"{self.journal.tag}:  ",
             "; ".join([f"{str(value)}" for value in self.fields.values() if isinstance(value, (str, int, float))]),

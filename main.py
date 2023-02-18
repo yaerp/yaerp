@@ -50,7 +50,7 @@ def run():
     entry1.credit('Account', account200, currency.amount2raw(1897.20))
     entry1.debit('Account', account100, currency.amount2raw(-897.20))
     entry1.credit('Account', account200, currency.amount2raw(-897.20))
-    entry1.commit()
+    entry1.post_to_ledger()
 
     class SaleJournal(Journal):
         def define_fields(self, transaction):
@@ -85,7 +85,7 @@ def run():
     entry3.debit('Cash', account100, 25000)
     entry3.credit('Sale', account200, 21000)
     entry3.credit('Tax', account300, 4000)
-    entry3.commit()
+    entry3.post_to_ledger()
 
 
 
@@ -94,7 +94,7 @@ def run():
     entry4.info('Description', 'Purchase of the printer')
     entry4.credit('Account', account100, 158)
     entry4.debit('Account', account400, 158)
-    entry4.commit()
+    entry4.post_to_ledger()
 
     entry5 = JournalEntry(journal=journal)
     entry5.info('Date', '2023-01-04')
@@ -113,7 +113,7 @@ def run():
     info = JournalEntry(journal=journal)
     info.info('Date', '2023-01-14')
     info.info('Description', 'Summary entry')
-    journal.post_cumulate([entry5, entry6], info)
+    journal.post_to_ledger([entry5, entry6], info)
 
     print(render_journal_entries2([entry2, entry3, entry4, entry5, entry6], layout=render_layout['terminal-120-3']))
 
