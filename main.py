@@ -1,9 +1,10 @@
 import locale
 from yaerp.accounting.ledger import Ledger
 from yaerp.accounting.journal import Journal
+from yaerp.accounting.journal import JournalEntry
 from yaerp.accounting.account import Account
-from yaerp.accounting.journal_entry import JournalEntry
-from yaerp.accounting.account_entry import AccountEntry
+from yaerp.accounting.account import AccountSide
+from yaerp.accounting.account import AccountEntry
 from yaerp.accounting.reports.t_account import T_account, render_journal_entries, render_journal_entries2, render_journal_entry, render_journal_entry2, render_layout
 from yaerp.model.money import Money as M
 from yaerp.model.currency import Currency as C
@@ -57,9 +58,9 @@ def run():
             return {
                 'Date': None,
                 'Description': None,
-                'Cash': AccountEntry(None, 0, 0, transaction, None),
-                'Sale': AccountEntry(None, 0, 1, transaction, None),
-                'Tax': AccountEntry(None, 0, 1, transaction, None)
+                'Cash': AccountEntry(None, 0, AccountSide.DEBIT, transaction, None),
+                'Sale': AccountEntry(None, 0, AccountSide.CREDIT, transaction, None),
+                'Tax': AccountEntry(None, 0, AccountSide.CREDIT, transaction, None)
             }
 
     sale_journal = SaleJournal('Sale Journal', ledger)

@@ -1,5 +1,5 @@
 import uuid
-from yaerp.accounting.account_entry import AccountEntry
+from yaerp.accounting.account import AccountEntry
 from yaerp.accounting.post import Post
 
 
