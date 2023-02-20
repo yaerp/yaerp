@@ -35,18 +35,6 @@ class Journal:
             ledger.register_journal(self)       
         self.journal_entries = []
 
-    # def post_separate(self, journal_entries):
-    #     ''' Post journal entries to the ledger.
-    #         Each journal entry involves new account entries in the ledger. '''
-    #     if not hasattr(journal_entries, '__iter__'):
-    #         self.validate_new_journal_entry(journal_entries)
-    #         self.ledger.post_journal_entry(self, journal_entries)
-    #         return
-    #     for journal_entry in journal_entries:
-    #         self.validate_new_journal_entry(journal_entry)
-    #     for journal_entry in journal_entries:
-    #         self.ledger.post_journal_entry(self, journal_entry)
-
     def post_to_ledger(self, journal_entries, summary_info):
         ''' Aggregate journal entries into the 'total entry' and post this to the ledger. '''
         if not hasattr(journal_entries, '__iter__'):
@@ -81,24 +69,23 @@ class Journal:
                     for account_entry in value:
                         add_to_summary(account_entry)
 
-        # for sum_key in sorted(summary_account_entries.keys()):
-        #     print(f"{sum_key}: {summary_account_entries[sum_key]}")
+        for sum_key in sorted(summary_account_entries.keys()):
+            print(f"{sum_key}: {summary_account_entries[sum_key]}")
 
-        # build summary_entry
+        # Build aggregated entry:
 
         summary_journal_entry = copy.deepcopy(summary_info)
         for key, value in summary_info.fields.items():
             if isinstance(value, (AccountEntry, list)):
                 del summary_journal_entry.fields[key]
-
+        # 
         summary_journal_entry.fields['Account'] = []
         for key in sorted(summary_account_entries):
             summary_journal_entry.fields['Account'].append(summary_account_entries[key])
-
+        # 
         self.validate_new_journal_entry(summary_journal_entry)
         post = self.ledger.post_summary_entry(self, summary_journal_entry)
         for journal_entry in journal_entries:
-            # journal_entry.post = post
             journal_entry._set_posted(post)
 
     def define_fields(self, journal_entry):
@@ -144,6 +131,7 @@ class Journal:
     
     def __str__(self) -> str:
         return self.tag
+
 
 class JournalEntry:
     '''

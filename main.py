@@ -51,7 +51,7 @@ def run():
     entry1.credit('Account', account200, currency.amount2raw(1897.20))
     entry1.debit('Account', account100, currency.amount2raw(-897.20))
     entry1.credit('Account', account200, currency.amount2raw(-897.20))
-    entry1.post_to_ledger()
+    # entry1.post_to_ledger()
 
     class SaleJournal(Journal):
         def define_fields(self, transaction):
@@ -116,7 +116,17 @@ def run():
     info.info('Description', 'Summary entry')
     journal.post_to_ledger([entry5, entry6], info)
 
-    print(render_journal_entries2([entry2, entry3, entry4, entry5, entry6], layout=render_layout['terminal-120-3']))
+    entry1.post_to_ledger()
+
+    def entries():
+        yield entry1
+        yield entry2
+        yield entry3
+        yield entry4
+        yield entry5
+        yield entry6
+
+    print(render_journal_entries2(entries(), layout=render_layout['terminal-120-3']))
 
     # print(f"entry1 post: {entry1.post}")
     # print(f"entry2 post: {entry2.post}")
