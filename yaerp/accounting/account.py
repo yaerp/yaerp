@@ -2,6 +2,8 @@ from enum import IntEnum, auto
 from dataclasses import dataclass
 from typing import Any
 
+from yaerp.model.money import Money
+
 class AccountSide(IntEnum):
     DEBIT = auto()
     CREDIT = auto()
@@ -99,12 +101,19 @@ class AccountEntry:
             self.post)
 
     def __str__(self) -> str:
-        info = self.get_info()
-        journal_field_name = info[0]
+        # info = self.get_info()
+        # journal_field_name = info[0]
         currency = self.account.currency
-        if self.side == 0:
+        if self.side == AccountSide.DEBIT:
             return f'Dr(\"[{self.account.tag}] {self.account.name}\", {currency.raw2str(self.amount)})'
             #return f'Dr(\"[{self.account.tag}] {self.account.name}\", {currency.raw2str(self.amount)}) - src: \"{self.journal_entry.journal.tag}/{journal_field_name}\"'
-        else:
+        elif self.side == AccountSide.CREDIT:
             return f'Cr(\"[{self.account.tag}] {self.account.name}\", {currency.raw2str(self.amount)})'
             # return f'Cr(\"[{self.account.tag}] {self.account.name}\", {currency.raw2str(self.amount)}) - src: \"{self.journal_entry.journal.tag}/{journal_field_name}\"'
+        return 'Incorrect Account Entry'
+
+def Dr(account: Account, amount: int, journal_entry):
+    return AccountEntry(account=account, amount=amount, side=AccountSide.DEBIT, journal_entry=journal_entry)
+
+def Cr(account: Account, amount: int, journal_entry):
+    return AccountEntry(account=account, amount=amount, side=AccountSide.CREDIT, journal_entry=journal_entry)

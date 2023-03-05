@@ -1,9 +1,4 @@
-from .exception import YaerpError
 from .metric import Metric
-
-class CurrencyError(YaerpError):
-    def __init__(self, message):
-        super().__init__(message)
 
 class Currency(Metric):
 
@@ -33,11 +28,17 @@ class Currency(Metric):
             result = ''.join([integ_part_str, ".", fract_part_str])
         return result
 
-    def amount2raw(self, amount):
-        ''' Convert amount to raw integer value '''
+    def amount2raw(self, regular_amount):
+        ''' Convert regular amount to the "raw integer" value '''
+        if isinstance(regular_amount, str):
+            regular_amount = float(regular_amount)
         if self.dot_position > 0:
-            return int(round(1.0 * amount * 10**self.dot_position, 0))
-        return int(round(amount, 0))
+            result = int(round(1.0 * regular_amount * 10**self.dot_position, 0))
+        else:
+            result = int(round(regular_amount, 0))
+        if result % self.smallest_value == 0:
+            return result
+        raise ValueError(f'incorrect fraction part of the amount')
 
     def __calculate_subunit(self, ratio_of_subunits_to_unit: int):
         for i in range(0, 19):
@@ -45,7 +46,7 @@ class Currency(Metric):
                 self.dot_position = i
                 self.smallest_value = (10 ** self.dot_position) // ratio_of_subunits_to_unit
                 return
-        raise CurrencyError('calculate subunit failed - ratio of subunit to unit is not acceptable')
+        raise ValueError('calculate subunit failed - ratio of subunit to unit is not acceptable')
 
     def __is_valid_dot_position(self, dot_position, ratio_of_subunits_to_unit):
         unit = 10 ** dot_position
