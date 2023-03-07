@@ -105,10 +105,10 @@ class AccountEntry:
         # journal_field_name = info[0]
         currency = self.account.currency
         if self.side == AccountSide.DEBIT:
-            return f'Dr(\"[{self.account.tag}] {self.account.name}\", {currency.raw2str(self.amount)})'
+            return f'Dr(\"[{self.account.tag}] {self.account.name}\", {currency.raw2amount(self.amount)})'
             #return f'Dr(\"[{self.account.tag}] {self.account.name}\", {currency.raw2str(self.amount)}) - src: \"{self.journal_entry.journal.tag}/{journal_field_name}\"'
         elif self.side == AccountSide.CREDIT:
-            return f'Cr(\"[{self.account.tag}] {self.account.name}\", {currency.raw2str(self.amount)})'
+            return f'Cr(\"[{self.account.tag}] {self.account.name}\", {currency.raw2amount(self.amount)})'
             # return f'Cr(\"[{self.account.tag}] {self.account.name}\", {currency.raw2str(self.amount)}) - src: \"{self.journal_entry.journal.tag}/{journal_field_name}\"'
         return 'Incorrect Account Entry'
 

@@ -424,7 +424,7 @@ def t_form_gen2(account, account_entry_list, layout=None, entry_counter=None):
         # post_info = account_entry.get_info()        
         # description = f'({entry_counter[post.entry]}.{post_info[1]})'
         description = f'({entry_counter[account_entry.journal_entry]})'
-        yield from t_account.row_generator(description, currency.raw2str(account_entry.amount), account_entry.side)
+        yield from t_account.row_generator(description, currency.raw2amount(account_entry.amount), account_entry.side)
 
 def vertical_space_gen(col_len):
     yield blank_row(col_len)

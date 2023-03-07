@@ -1,3 +1,4 @@
+from decimal import Decimal
 import locale
 from yaerp.accounting.ledger import Ledger
 from yaerp.accounting.journal import Journal
@@ -6,7 +7,7 @@ from yaerp.accounting.account import Account
 from yaerp.accounting.account import AccountSide
 from yaerp.accounting.account import AccountEntry
 from yaerp.accounting.reports.t_account import T_account, render_journal_entries, render_journal_entries2, render_journal_entry, render_journal_entry2, render_layout
-from yaerp.model.money import Money as M
+from yaerp.model.money import Money
 from yaerp.model.currency import Currency
 from yaerp.report.typesetting.columns import simultaneous_column_generator as typeset
 
@@ -129,22 +130,56 @@ def run():
     print(render_journal_entries2(entries(), layout=render_layout['terminal-120-3']))
 
 
-    currency = Currency('PLN', '985', 100, 'Polski Złoty', 'zł', 'gr')
+    currency = Currency('PLN', '985', 100, 'Polski Złoty', 'zł', 'gr',
+                        fraction_char=',',
+                        group_separator_char='\u00A0',
+                        separator_positions=(3, 6, 9, 12, 15, 18))
     print(f"1{currency.national_unit_symbol} (1{currency.symbol}) = {currency.ratio_of_subunits_to_unit}{currency.national_subunit_symbol}")
     print(f"1{currency.national_subunit_symbol} = 1/{currency.ratio_of_subunits_to_unit} {currency.national_unit_symbol}") 
     raw_amount1 = currency.amount2raw(4543.5)
-    raw_amount2 = currency.amount2raw("4543.5")
+    raw_amount2 = currency.amount2raw("434345543.5")
     print(raw_amount1, raw_amount2)
-    print(currency.raw2str(raw_amount1), currency.raw2str(raw_amount2))
+    print(currency.raw2amount(raw_amount1), currency.raw2amount(raw_amount2))
     print()
-    currency = Currency('MRU', '929', 5, 'Mauritanian Ouguiya', 'أوقية', 'خمس')
+    currency = Currency('MRU', '929', 5, 'Mauritanian Ouguiya', 'أوقية', 'خمس', 
+                        fraction_char='.',
+                        group_separator_char=',',
+                        separator_positions=(3, 6, 9, 12, 15, 18))
     print(f"{currency.national_unit_symbol} 1 (1{currency.symbol}) = {currency.national_subunit_symbol} {currency.ratio_of_subunits_to_unit}")
     print(f"{currency.national_subunit_symbol} 1 = {currency.national_unit_symbol} 1/{currency.ratio_of_subunits_to_unit}")  
     raw_amount1 = currency.amount2raw(4543.6)
-    raw_amount2 = currency.amount2raw("4543.6")
+    raw_amount2 = currency.amount2raw("48979543.6")
     print(raw_amount1, raw_amount2)
-    print(currency.raw2str(raw_amount1), currency.raw2str(raw_amount2), sep="   ")
+    print(currency.raw2amount(raw_amount1), currency.raw2amount(raw_amount2), sep="   ")
+    print()
+    currency = Currency('INR', '356', 100, 'Indian rupee', '\u20B9', 'paise', 
+                        fraction_char='.',
+                        group_separator_char=',',
+                        separator_positions=(3, 5, 7, 9, 11, 13, 15, 17, 19))
+    print(f"{currency.national_unit_symbol}1 (1{currency.symbol}) = {currency.ratio_of_subunits_to_unit} {currency.national_subunit_symbol}")
+    print(f"1 {currency.national_subunit_symbol} = {currency.national_unit_symbol} 1/{currency.ratio_of_subunits_to_unit}")  
 
+    raw_amount2 = currency.amount2raw("48979543.6")
+    print(raw_amount1, raw_amount2)
+    print(currency.raw2amount(raw_amount1), currency.raw2amount(raw_amount2), sep="   ")
+
+
+    money = Money(currency, 9)
+
+    # print(money+Money(currency, 20))
+    # print(money-Money(currency, 20))
+    # print(money*0.98)
+    # print(money*50)
+    # print(money/2)
+    # print(money/3)
+    # print(money/4)
+    # print(money//2)
+    # print(money//3)
+    # print(money//4) 
+    for m in money.allocate([0.985, 0.015]):
+        print(m) 
+    for m in money.allocate([0.015, 0.985]):
+        print(m)
 
     # print(f"entry1 post: {entry1.post}")
     # print(f"entry2 post: {entry2.post}")
