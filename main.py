@@ -175,18 +175,18 @@ def run():
     # print(money/4)
     # print(money//2)
     # print(money//3)
-    # print(money//4) 
-    for m in money.allocate([0.985, 0.015]):
-        print(m) 
-    for m in money.allocate([0.015, 0.985]):
-        print(m)
+    # print(money//4)
+    # for m in money.allocate([2,5,7,8,9]):
+    #     print(m) 
+    # for m in money.allocate(list(reversed([2,5,7,8,9]))):
+    #     print(m)
 
-    # print(f"entry1 post: {entry1.post}")
-    # print(f"entry2 post: {entry2.post}")
-    # print(f"entry3 post: {entry3.post}")
-    # print(f"entry4 post: {entry4.post}")
-    # print(f"entry5 post: {entry5.post}")
-    # print(f"entry6 post: {entry6.post}")
+    print(f"entry1 post: {entry1.post}")
+    print(f"entry2 post: {entry2.post}")
+    print(f"entry3 post: {entry3.post}")
+    print(f"entry4 post: {entry4.post}")
+    print(f"entry5 post: {entry5.post}")
+    print(f"entry6 post: {entry6.post}")
 
     #print(account100.get_debit(predicate=lambda post: '2022' in post.transaction.fields['Date']))
     #print(account100.get_debit(predicate=lambda post: '2023' in post.transaction.fields['Date']))

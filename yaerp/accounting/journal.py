@@ -1,8 +1,6 @@
 import copy
-# from yaerp.accounting.ledger import Ledger
 from yaerp.accounting.account import AccountEntry, AccountSide
-# from yaerp.accounting.journal_entry import JournalEntry
-# from yaerp.accounting.post import Post
+
 
 class Journal:
     '''
@@ -120,6 +118,8 @@ class Journal:
         }
 
     def validate_new_journal_entry(self, journal_entry):
+        if journal_entry.journal and self != journal_entry.journal:
+            raise ValueError('the specified entry is not binded to this journal')
         if journal_entry in self.journal_entries:
             raise ValueError('the specified entry already exist in the journal')
         for field in journal_entry.fields.values():

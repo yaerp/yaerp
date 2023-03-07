@@ -50,14 +50,14 @@ class Money(Quantity):
         return Money(self.currency, 0, raw=(self.__raw_value - other.__raw_value))
 
     def __mul__(self, coefficient):
-        result = self._raw_mul(self.__raw_value, coefficient)
+        result = self._raw_mul(coefficient)
         return Money(self.currency, 0, raw=result)
 
-    def _raw_mul(self, raw_x, coefficient):
+    def _raw_mul(self, coefficient):
         if self.currency.ratio_of_subunits_to_unit % 10 == 0:
-            result = int(raw_x * coefficient)
+            result = int(self.__raw_value * coefficient)
         else:
-            result = int(round(raw_x * self.currency.ratio_of_subunits_to_unit * coefficient / 10**self.currency.fraction_pos, 0))
+            result = int(round(self.__raw_value * self.currency.ratio_of_subunits_to_unit * coefficient / 10**self.currency.fraction_pos, 0))
             result = result * 10**self.currency.fraction_pos // self.currency.ratio_of_subunits_to_unit
         return result
 
@@ -103,7 +103,7 @@ class Money(Quantity):
         reminder = self.__raw_value
         parts = []
         for idx, ratio in enumerate(ratios):
-            value = int(self._raw_mul(self.__raw_value, ratio) // total)
+            value = int(self._raw_mul(ratio) // total)
             # value = int(self.__raw_value * ratio // total)
 
 
