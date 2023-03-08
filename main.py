@@ -38,16 +38,18 @@ def run():
     class AdjustingJournal(Journal):
         def define_fields(self, transaction):
             return {
-                'Date': None,
-                'Description': 'Adjusting',
+                # 'Date': None,
+                # 'Description': 'Adjusting',
                 'Account': []
             }
 
     adjusting_journal = AdjustingJournal('Adjusting Journal', ledger)
 
     entry1 = JournalEntry(journal=adjusting_journal)
-    entry1.info('Date', '2022-12-30')
-    entry1.info('Description', 'Correction')
+    # entry1.info('Date', '2022-12-30')
+    # entry1.info('Description', 'Correction')
+    entry1.date = '2022-12-30'
+    entry1.description = "Correction"
     entry1.debit('Account', account100, currency.amount2raw(1897.20))
     entry1.credit('Account', account200, currency.amount2raw(1897.20))
     entry1.debit('Account', account100, currency.amount2raw(-897.20))
@@ -57,8 +59,8 @@ def run():
     class SaleJournal(Journal):
         def define_fields(self, transaction):
             return {
-                'Date': None,
-                'Description': None,
+                # 'Date': None,
+                # 'Description': None,
                 'Cash': AccountEntry(None, 0, AccountSide.DEBIT, transaction, None),
                 'Sale': AccountEntry(None, 0, AccountSide.CREDIT, transaction, None),
                 'Tax': AccountEntry(None, 0, AccountSide.CREDIT, transaction, None)
@@ -67,8 +69,8 @@ def run():
     sale_journal = SaleJournal('Sale Journal', ledger)
 
     entry2 = JournalEntry(journal=sale_journal)
-    entry2.info('Date', '2023-01-04')
-    entry2.info('Description', 'Example of Sales')
+    entry2.date = '2023-01-04'
+    entry2.description = 'Example of Sales'
     entry2.credit('Sale', account200, 3553300)
     # entry2.credit('Tax', account300, 0)
     entry2.debit('Cash', account100, 3553300)
@@ -82,42 +84,42 @@ def run():
 
 
     entry3 = JournalEntry(journal=sale_journal)
-    entry3.info('Date', '2023-01-03')
-    entry3.info('Description', 'Sold 3 books')
+    entry3.date = '2023-01-03'
+    entry3.description = 'Sold 3 books'
     entry3.debit('Cash', account100, 25000)
     entry3.credit('Sale', account200, 21000)
     entry3.credit('Tax', account300, 4000)
-    entry3.post_to_ledger()
+    entry3.post_this()
 
 
 
     entry4 = JournalEntry(journal=journal)
-    entry4.info('Date', '2023-01-03')
-    entry4.info('Description', 'Purchase of the printer')
+    entry4.date= '2023-01-03'
+    entry4.description = 'Purchase of the printer'
     entry4.credit('Account', account100, 158)
     entry4.debit('Account', account400, 158)
-    entry4.post_to_ledger()
+    entry4.post_this()
 
     entry5 = JournalEntry(journal=journal)
-    entry5.info('Date', '2023-01-04')
-    entry5.info('Description', 'Accept the printer as a cost')
+    entry5.date = '2023-01-04'
+    entry5.description = 'Accept the printer as a cost'
     entry5.credit('Account', account500, 258)
     entry5.debit('Account', account400, 258)
     # entry5.commit()
 
     entry6 = JournalEntry(journal=journal)
-    entry6.info('Date', '2023-01-05')
-    entry6.info('Description', 'Accept the printer as a cost')
+    entry6.date = '2023-01-05'
+    entry6.description = 'Accept the printer as a cost'
     entry6.debit('Account', account500, 258)
     entry6.credit('Account', account400, 258)
     # entry6.commit()
 
     info = JournalEntry(journal=journal)
-    info.info('Date', '2023-01-14')
-    info.info('Description', 'Summary entry')
-    journal.post_to_ledger([entry5, entry6], info)
+    # info.date = '2023-01-14'
+    # info.description = 'Summary entry'
+    journal.post_aggregated([entry5, entry6, entry5, entry5, entry5], '2023-01-14', 'Summary entry')
 
-    entry1.post_to_ledger()
+    entry1.post_this()
 
     def entries():
         yield entry1

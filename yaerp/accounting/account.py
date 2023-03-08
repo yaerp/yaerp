@@ -11,13 +11,19 @@ class AccountSide(IntEnum):
 class Account:
     
     def __init__(self, tag: str, ledger, currency, name = None, guid = None) -> None:
+        if not tag:
+            raise ValueError("'tag' parameter must be non empty string")
         self.tag = tag
+        if not ledger:
+            raise ValueError("'ledger' parameter cannot be empty")
+        self.ledger = ledger
+        if not currency:
+            raise ValueError("'currency' parameter cannot be empty")
+        self.currency = currency
         self.name = name
         self.guid = guid
-        self.ledger = ledger
         if self.ledger:
             ledger.register_account(self)
-        self.currency = currency
         self.posted_entries = [] # only Ledger should modify this list
 
     def append_entry(self, post):

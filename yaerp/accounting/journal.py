@@ -33,13 +33,18 @@ class Journal:
             ledger.register_journal(self)       
         self.journal_entries = []
 
-    def post_to_ledger(self, journal_entries, summary_info):
-        ''' Aggregate journal entries into the 'total entry' and post this to the ledger. '''
+    def post_aggregated(self, journal_entries, summary_date, summary_description,
+                        summary_reference=None, **summary_info_fields):
+        ''' Aggregate journal entries into the 'summary entry' and post this to the ledger. '''
         if not hasattr(journal_entries, '__iter__'):
             ValueError('\'journal_entries\' must be iterable')
 
-        for journal_entry in journal_entries:
-            self.validate_new_journal_entry(journal_entry)
+        summary_journal_entry = JournalEntry(self)
+        summary_journal_entry.date = summary_date
+        summary_journal_entry.description = summary_description
+        summary_journal_entry.reference = summary_reference
+        for field_name, field_value in summary_info_fields.items():
+            summary_journal_entry.info(field_name, field_value)
 
         summary_account_entries = {}
 
@@ -56,32 +61,29 @@ class Journal:
                     account_entry.account,
                     account_entry.amount,
                     account_entry.side,
-                    summary_info,
+                    summary_journal_entry,
                     None)
 
-        for journal_entry in journal_entries:
-            for name, value in journal_entry.fields.items():
+        # Group and accumulate account entries
+        for journal_entry in set(journal_entries):
+            self.validate_new_journal_entry(journal_entry)
+            for value in journal_entry.fields.values():
                 if isinstance(value, AccountEntry):
                     add_to_summary(value)
+                    continue
                 if isinstance(value, list):
                     for account_entry in value:
                         add_to_summary(account_entry)
 
-        for sum_key in sorted(summary_account_entries.keys()):
-            print(f"{sum_key}: {summary_account_entries[sum_key]}")
+        # for sum_key in sorted(summary_account_entries.keys()):
+        #     print(f"{sum_key}: {summary_account_entries[sum_key]}")
 
         # Build aggregated entry:
-
-        summary_journal_entry = copy.deepcopy(summary_info)
-        for key, value in summary_info.fields.items():
-            if isinstance(value, (AccountEntry, list)):
-                del summary_journal_entry.fields[key]
-        # 
-        summary_journal_entry.fields['Account'] = []
         for key in sorted(summary_account_entries):
             summary_journal_entry.fields['Account'].append(summary_account_entries[key])
-        # 
         self.validate_new_journal_entry(summary_journal_entry)
+
+        # Post aggregated entry to the ledger:
         post = self.ledger.post_summary_entry(self, summary_journal_entry)
         for journal_entry in journal_entries:
             journal_entry._set_posted(post)
@@ -110,16 +112,14 @@ class Journal:
                             'Account': []
         '''
         return {
-            'Date':         None,   # info
-            'Description':  None,   # info
+            # 'Date':         None,   # info
+            # 'Description':  None,   # info
             'Account':      []      # debit/credit account entries
-            # 'Debit': AccountEntry(None, 0, 0, journal_entry, None),    # debit entry
-            # 'Credit': AccountEntry(None, 0, 1, journal_entry, None)    # credit entry
         }
 
     def validate_new_journal_entry(self, journal_entry):
         if journal_entry.journal and self != journal_entry.journal:
-            raise ValueError('the specified entry is not binded to this journal')
+            raise ValueError('the specified entry is binded to another journal')
         if journal_entry in self.journal_entries:
             raise ValueError('the specified entry already exist in the journal')
         for field in journal_entry.fields.values():
@@ -151,6 +151,9 @@ class JournalEntry:
 
     def __init__(self, journal):
         self.journal = journal
+        self.date = None
+        self.description = None
+        self.reference = None
         self.post = None
         if self.journal:
             self.fields = self.journal.define_fields(self)
@@ -158,33 +161,12 @@ class JournalEntry:
             self.fields = {}
 
     def is_balanced(self):
-        result_dt, result_ct = 0, 0
-        for field in self.fields.values():
-            if isinstance(field, AccountEntry):
-                if field.side != AccountSide.DEBIT and field.side != AccountSide.CREDIT:
-                    raise ValueError('account side must be DEBIT or CREDIT')
-                if field.amount and not field.account:
-                    raise ValueError('entry with no account has non zero amount')
-                if field.side == AccountSide.DEBIT:
-                    result_dt += field.amount
-                else:
-                    result_ct += field.amount
-            elif isinstance(field, list):
-                for account_entry in field:
-                    if account_entry.side != AccountSide.DEBIT and account_entry.side != AccountSide.CREDIT:
-                        raise ValueError('account side must be DEBIT or CREDIT')
-                    if account_entry.amount and not account_entry.account:
-                        raise ValueError('entry with no account has non zero amount')
-                    if account_entry.side == AccountSide.DEBIT:
-                        result_dt += account_entry.amount
-                    else:
-                        result_ct += account_entry.amount
-        return result_dt == result_ct
+        return self.get_debit() == self.get_credit()
 
     def info(self, field_tag: str, field_value):
         ''' Set info field '''
         if field_tag not in self.fields.keys():
-            raise RuntimeError(f'unknown field \'{field_tag}\'')
+            raise RuntimeError(f'usage of unexpected (unknown?) field \'{field_tag}\'')
         self.fields[field_tag] = field_value
 
     def debit(self, field_tag: str, account, amount: int):
@@ -211,7 +193,41 @@ class JournalEntry:
         else:
             raise RuntimeError(f'Journal field \'{field_tag}\' is not dedicated for debit/credit entries.')
 
-    def post_to_ledger(self):
+    def get_debit(self):
+        return self._get_side_sum(AccountSide.DEBIT)
+
+    def get_credit(self):
+        return self._get_side_sum(AccountSide.CREDIT)
+
+    def _get_side_sum(self, side):
+        result = 0
+        for field in self.fields.values():
+            if isinstance(field, AccountEntry):
+                if field.side != AccountSide.DEBIT and field.side != AccountSide.CREDIT:
+                    raise ValueError('account side must be DEBIT or CREDIT')
+                if field.amount and not field.account:
+                    raise ValueError('entry with no account has non zero amount')
+                if field.side == side:
+                    result += field.amount
+            elif isinstance(field, list):
+                for account_entry in field:
+                    if account_entry.side != AccountSide.DEBIT and account_entry.side != AccountSide.CREDIT:
+                        raise ValueError('account side must be DEBIT or CREDIT')
+                    if account_entry.amount and not account_entry.account:
+                        raise ValueError('entry with no account has non zero amount')
+                    if account_entry.side == side:
+                        result += account_entry.amount
+        return result
+
+    def _get_currency(self):
+        for field in self.fields.values():
+            if isinstance(field, AccountEntry):
+                return field.account.currency
+            elif isinstance(field, list):
+                for account_entry in field:
+                    return account_entry.account.currency
+
+    def post_this(self):
         ''' Post this journal entry to the ledger (single post) '''
         if not self.is_balanced():
             raise RuntimeError('not balanced journal entry')
@@ -247,14 +263,14 @@ class JournalEntry:
         self.post = post
 
     def __str__(self):
-        post_info = '/not posted/'
+        currency = self._get_currency()
+        post_info = 'not posted'
         if self.post:
             if self.post.summary_entry:
-                post_info = '/aggregated post/'
+                post_info = 'posted aggregated entries'
             else:
-                post_info = '/simple post/'
+                post_info = 'posted single entry'
         return ' '.join([
-            f"{self.journal.tag}:  ",
-            "; ".join([f"{str(value)}" for value in self.fields.values() if isinstance(value, (str, int, float))]),
-            f'{post_info}'
+            f"{str(self.date)}, {self.description}, {currency.raw2amount(self.get_debit())}",
+            f"({self.journal.tag}, {post_info})"
         ])
