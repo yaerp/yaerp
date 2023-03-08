@@ -39,13 +39,24 @@ class Journal:
         if not hasattr(journal_entries, '__iter__'):
             ValueError('\'journal_entries\' must be iterable')
 
+        # Build empty summary entry (similar to General Journal entry):
         summary_journal_entry = JournalEntry(self)
+        
         summary_journal_entry.date = summary_date
         summary_journal_entry.description = summary_description
         summary_journal_entry.reference = summary_reference
         for field_name, field_value in summary_info_fields.items():
             summary_journal_entry.info(field_name, field_value)
+        
+        # Remove current account fields and put new, all-purpose 'Account' field:
+        clone = JournalEntry(self)        
+        for key, value in clone.fields.items():
+            if isinstance(value, (AccountEntry, list)):
+                del summary_journal_entry.fields[key]
+        summary_journal_entry.fields['Account'] = []
 
+
+        # Group and accumulate account entries:
         summary_account_entries = {}
 
         def add_to_summary(account_entry):
@@ -64,7 +75,6 @@ class Journal:
                     summary_journal_entry,
                     None)
 
-        # Group and accumulate account entries
         for journal_entry in set(journal_entries):
             self.validate_new_journal_entry(journal_entry)
             for value in journal_entry.fields.values():
@@ -78,15 +88,21 @@ class Journal:
         # for sum_key in sorted(summary_account_entries.keys()):
         #     print(f"{sum_key}: {summary_account_entries[sum_key]}")
 
-        # Build aggregated entry:
+        # Copy aggregated data into summary entry:
         for key in sorted(summary_account_entries):
             summary_journal_entry.fields['Account'].append(summary_account_entries[key])
         self.validate_new_journal_entry(summary_journal_entry)
 
-        # Post aggregated entry to the ledger:
+        # Post summary entry to the ledger:
         post = self.ledger.post_summary_entry(self, summary_journal_entry)
         for journal_entry in journal_entries:
             journal_entry._set_posted(post)
+
+    def retrieve_entry(self, post):
+        if post.summary_entry:
+            pass
+        else:
+            pass
 
     def define_fields(self, journal_entry):
         '''
@@ -112,8 +128,6 @@ class Journal:
                             'Account': []
         '''
         return {
-            # 'Date':         None,   # info
-            # 'Description':  None,   # info
             'Account':      []      # debit/credit account entries
         }
 
