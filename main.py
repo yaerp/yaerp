@@ -1,5 +1,6 @@
 from decimal import Decimal
 import locale
+import operator
 from yaerp.accounting.ledger import Ledger
 from yaerp.accounting.journal import Journal
 from yaerp.accounting.journal import JournalEntry
@@ -10,6 +11,7 @@ from yaerp.accounting.reports.t_account import T_account, render_journal_entries
 from yaerp.model.money import Money
 from yaerp.model.currency import Currency
 from yaerp.report.typesetting.columns import simultaneous_column_generator as typeset
+from yaerp.tools.sorted_collection import SortedCollection
 
 def run():
     currency = Currency('PLN', '985', 100, "Polish Złoty", 'zł', 'gr')
@@ -69,7 +71,7 @@ def run():
     sale_journal = SaleJournal('Sale Journal', ledger)
 
     entry2 = JournalEntry(journal=sale_journal)
-    entry2.date = '2023-01-04'
+    entry2.date = '2023-01-01'
     entry2.description = 'Example of Sales'
     entry2.credit('Sale', account200, 3553300)
     # entry2.credit('Tax', account300, 0)
@@ -168,27 +170,11 @@ def run():
 
     money = Money(currency, 9)
 
-    # print(money+Money(currency, 20))
-    # print(money-Money(currency, 20))
-    # print(money*0.98)
-    # print(money*50)
-    # print(money/2)
-    # print(money/3)
-    # print(money/4)
-    # print(money//2)
-    # print(money//3)
-    # print(money//4)
-    # for m in money.allocate([2,5,7,8,9]):
-    #     print(m) 
-    # for m in money.allocate(list(reversed([2,5,7,8,9]))):
-    #     print(m)
+    print('----------------------------')
+    for account_entry in ledger.account_entries:
+        print(account_entry)
 
-    print(f"entry1 post: {entry1.post}")
-    print(f"entry2 post: {entry2.post}")
-    print(f"entry3 post: {entry3.post}")
-    print(f"entry4 post: {entry4.post}")
-    print(f"entry5 post: {entry5.post}")
-    print(f"entry6 post: {entry6.post}")
+    # operator.
 
     #print(account100.get_debit(predicate=lambda post: '2022' in post.transaction.fields['Date']))
     #print(account100.get_debit(predicate=lambda post: '2023' in post.transaction.fields['Date']))

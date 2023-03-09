@@ -1,8 +1,10 @@
 from enum import IntEnum, auto
 from dataclasses import dataclass
+import operator
 from typing import Any
 
 from yaerp.model.money import Money
+from yaerp.tools.sorted_collection import SortedCollection
 
 class AccountSide(IntEnum):
     DEBIT = auto()
@@ -24,15 +26,15 @@ class Account:
         self.guid = guid
         if self.ledger:
             ledger.register_account(self)
-        self.posted_entries = [] # only Ledger should modify this list
+        self.posted_entries = SortedCollection([], key=operator.attrgetter('journal_entry.date')) # only Ledger should modify this list
 
-    def append_entry(self, post):
+    def append_entry(self, account_entry):
         ''' A ledger invoke this function when Entry is in the process of posting. '''
-        if post.account != self:
+        if account_entry.account != self:
             raise ValueError('post is assigned to an another account')
-        if post in self.posted_entries:
+        if account_entry in self.posted_entries:
             raise ValueError('post is already added')
-        self.posted_entries.append(post)
+        self.posted_entries.insert_right(account_entry)
 
     def get_debit(self, predicate=None):
         ''' Amount (raw integer) of debit posts. '''

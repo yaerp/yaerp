@@ -1,13 +1,15 @@
+import operator
 import uuid
 from yaerp.accounting.account import AccountEntry
 from yaerp.accounting.post import Post
+from yaerp.tools.sorted_collection import SortedCollection
 
 
 class Ledger:
 
     def __init__(self, tag: str):
         self.tag = tag
-        self.account_entries = [] # main ledger's container
+        self.account_entries = SortedCollection([], key=operator.attrgetter('journal_entry.date')) # main ledger's container
         self.accounts = {} # associated accounts
         self.journals = {} # associated journals
 
@@ -32,7 +34,7 @@ class Ledger:
                                                         post)
                     self.__append_account_entry(posted_account_entry)
                     field[idx] = posted_account_entry 
-        journal.journal_entries.append(journal_entry)
+        journal.journal_entries.insert_right(journal_entry)
         journal_entry.post = post
         
     def post_summary_entry(self, journal, summary_journal_entry):
@@ -79,7 +81,7 @@ class Ledger:
             raise ValueError('this account entry already exist in the ledger')
 
     def __append_account_entry(self, account_entry):
-        self.account_entries.append(account_entry)
+        self.account_entries.insert_right(account_entry)
         account_entry.account.append_entry(account_entry)
 
     def register_account(self, account):

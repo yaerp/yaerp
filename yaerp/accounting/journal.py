@@ -1,5 +1,7 @@
 import copy
+import operator
 from yaerp.accounting.account import AccountEntry, AccountSide
+from yaerp.tools.sorted_collection import SortedCollection
 
 
 class Journal:
@@ -31,7 +33,7 @@ class Journal:
         self.ledger = ledger
         if ledger:
             ledger.register_journal(self)       
-        self.journal_entries = []
+        self.journal_entries = SortedCollection([], key=operator.attrgetter('date'))
 
     def post_aggregated(self, journal_entries, summary_date, summary_description,
                         summary_reference=None, **summary_info_fields):
