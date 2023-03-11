@@ -66,7 +66,7 @@ class Ledger:
 
     def __validate_account_entry(self, journal, account_entry):
         if account_entry.amount and not account_entry.account:
-            raise ValueError('non-zero account entry has no parent account')
+            raise ValueError('account entry has no parent account')
         if account_entry.account and account_entry.account not in self.accounts.values():
             raise ValueError('account entry has parent account associated with an another ledger')
         # if entry.transaction is None:

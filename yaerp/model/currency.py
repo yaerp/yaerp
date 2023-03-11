@@ -22,6 +22,10 @@ class Currency(Metric):
         if raw_int_value is not int:
             ValueError('input argument must be integer')
         result = str(raw_int_value)
+        sign = ''
+        if result[0] == '-':
+            sign = '-'
+            result = result[1:]
         integ_part_str = result[:-self.fraction_pos]
         fract_part_str = result[-self.fraction_pos:]
         if not integ_part_str:
@@ -49,7 +53,7 @@ class Currency(Metric):
                 rev_parts.append(c)
             integ_part_str = ''.join(reversed(rev_parts))
         if self.fraction_pos > 0:
-            result = ''.join([integ_part_str, fract_char, fract_part_str])
+            result = ''.join([sign, integ_part_str, fract_char, fract_part_str])
         return result
 
     def amount2raw(self, regular_amount, current_fraction_char=None, current_group_separator_char=None):
