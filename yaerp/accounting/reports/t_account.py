@@ -3,7 +3,7 @@ from itertools import chain
 import textwrap
 
 from yaerp.accounting.journal import JournalEntry
-from yaerp.accounting.account import AccountEntry, AccountSide
+from yaerp.accounting.account import AccountRecord, AccountSide
 from yaerp.report.typesetting.columns import simultaneous_column_generator
 
 @dataclass
@@ -230,7 +230,7 @@ class T_account:
             return side_formatter.format(amount, description)
 
 def render_journal_entry(entry: JournalEntry, col=2, col_len=37):
-    account_set = set(field.account for field in entry.fields.values() if isinstance(field, AccountEntry))
+    account_set = set(field.account for field in entry.fields.values() if isinstance(field, AccountRecord))
     account_list = list(account_set)
     account_list.sort(key=lambda acc: acc.tag)
     return render(*account_list, account_entry_predicate = lambda post: post.entry == entry, col=col, col_len=col_len)
@@ -239,7 +239,7 @@ def render_journal_entry2(journal_entry: JournalEntry, layout):
     accounts_engaged = []
     accounts_entries = []
     for field in journal_entry.fields.values():
-        if isinstance(field, AccountEntry):
+        if isinstance(field, AccountRecord):
             if field.account and field.amount:
                 accounts_engaged.append(field.account)
                 accounts_entries.append(field)
@@ -265,7 +265,7 @@ def render_journal_entries(journal_entry_list, layout=None):
         journal_entry_counter[journal_entry] = number_label
         # find engaged accounts
         for field in journal_entry.fields.values():
-            if isinstance(field, AccountEntry) and field.account:
+            if isinstance(field, AccountRecord) and field.account:
                 accounts_dict[field.account] = field.account
             elif isinstance(field, list):
                 for account_entry in field:
@@ -300,7 +300,7 @@ def render_journal_entries2(journal_entry_list, layout=None):
         journal_entry_counter[journal_entry] = number_label
         # find engaged accounts
         for field in journal_entry.fields.values():
-            if isinstance(field, AccountEntry):
+            if isinstance(field, AccountRecord):
                 if field.account and field.amount:
                     accounts_engaged.append(field.account)
                     accounts_entries.append(field)

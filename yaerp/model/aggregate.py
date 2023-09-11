@@ -2,7 +2,6 @@ from datetime import datetime
 import importlib
 from typing import List, Optional, Type
 from uuid import UUID, uuid4
-from yaerp.accounting.ledger import Ledger
 from yaerp.model.domain_event import DomainEvent
 
 
@@ -75,7 +74,7 @@ class Aggregate:
             while self.pending_events:
                 collected.append(self.pending_events.pop(0))
             return collected
-        
+
 def get_topic(cls: type) -> str:
     return f"{cls.__module__}#{cls.__qualname__}"
 

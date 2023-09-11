@@ -1,5 +1,6 @@
 from itertools import zip_longest
 
+
 def simultaneous_column_generator(column_generators: list, empty_column_lines: list,
                 indent_width = 1, gutter_width = 4):
     if len(column_generators) != len(empty_column_lines):

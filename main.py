@@ -1,12 +1,13 @@
 from decimal import Decimal
 import locale
 import operator
+from yaerp.accounting import GJ, GL
 from yaerp.accounting.ledger import Ledger
 from yaerp.accounting.journal import Journal
 from yaerp.accounting.journal import JournalEntry
 from yaerp.accounting.account import Account
 from yaerp.accounting.account import AccountSide
-from yaerp.accounting.account import AccountEntry
+from yaerp.accounting.account import AccountRecord
 from yaerp.accounting.reports.t_account import T_account, render_journal_entries, render_journal_entries2, render_journal_entry, render_journal_entry2, render_layout
 from yaerp.model.money import Money
 from yaerp.model.currency import Currency
@@ -40,8 +41,6 @@ def run():
     class AdjustingJournal(Journal):
         def define_fields(self, transaction):
             return {
-                # 'Date': None,
-                # 'Description': 'Adjusting',
                 'Account': []
             }
 
@@ -54,18 +53,18 @@ def run():
     entry1.description = "Correction"
     entry1.debit('Account', account100, currency.amount2raw(1897.20))
     entry1.credit('Account', account200, currency.amount2raw(1897.20))
-    entry1.debit('Account', account100, currency.amount2raw(-897.20))
-    entry1.credit('Account', account200, currency.amount2raw(-897.20))
+    # entry1.debit('Account', account100, currency.amount2raw(-897.20))
+    # entry1.credit('Account', account200, currency.amount2raw(-897.20))
+    entry1.add_record("Account", currency.amount2raw(-897.20), account=account100, side=AccountSide.DEBIT)
+    entry1.add_record("Account", currency.amount2raw(-897.20), account=account200, side=AccountSide.CREDIT)
     # entry1.post_to_ledger()
 
     class SaleJournal(Journal):
         def define_fields(self, transaction):
             return {
-                # 'Date': None,
-                # 'Description': None,
-                'Cash': AccountEntry(None, 0, AccountSide.DEBIT, transaction, None),
-                'Sale': AccountEntry(None, 0, AccountSide.CREDIT, transaction, None),
-                'Tax': AccountEntry(None, 0, AccountSide.CREDIT, transaction, None)
+                'Cash': AccountRecord(account100, 0, AccountSide.DEBIT, transaction, None),
+                'Sale': AccountRecord(account200, 0, AccountSide.CREDIT, transaction, None),
+                'Tax': AccountRecord(None, 0, AccountSide.CREDIT, transaction, None)
             }
 
     sale_journal = SaleJournal('Sale Journal', ledger)
@@ -73,9 +72,12 @@ def run():
     entry2 = JournalEntry(journal=sale_journal)
     entry2.date = '2023-01-01'
     entry2.description = 'Example of Sales'
-    entry2.credit('Sale', account200, 3553300)
-    # entry2.credit('Tax', account300, 0)
-    entry2.debit('Cash', account100, 3553300)
+    #entry2.credit('Sale', account200, 3553300)
+    entry2.add_record("Sale", 3553300)
+    # entry2.debit('Cash', account100, 3553300)
+    entry2.add_record("Cash", 3553300)
+    entry2.post_this()
+ 
     # entry2.commit()
 
 
@@ -171,8 +173,24 @@ def run():
     money = Money(currency, 9)
 
     print('----------------------------')
-    for account_entry in ledger.account_entries:
+    for account_entry in ledger.posts:
         print(account_entry)
+    print('----------------------------')
+
+    a = Account("Sale", GL(), currency)
+    b = Account("Goods", GL(), currency)
+    j = JournalEntry(GJ())
+
+    j.add_info("date", '2023-01-03')
+    j.description = 'Purchase of the printer'
+    j.credit("Account", a, 100)
+    j.debit("Account", b, 100)
+    j.post_this()
+
+    print('----------------------------')
+    for account_entry in GL().posts:
+        print(account_entry)
+    print('----------------------------')
 
     # operator.
 

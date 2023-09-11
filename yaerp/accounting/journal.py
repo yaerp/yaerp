@@ -1,6 +1,6 @@
 import copy
 import operator
-from yaerp.accounting.account import AccountEntry, AccountSide
+from yaerp.accounting.account import AccountRecord, AccountSide
 from yaerp.tools.sorted_collection import SortedCollection
 
 
@@ -37,7 +37,10 @@ class Journal:
 
     def post_aggregated(self, journal_entries, summary_date, summary_description,
                         summary_reference=None, **summary_info_fields):
-        ''' Aggregate journal entries into the 'summary entry' and post this to the ledger. '''
+        ''' 
+        Aggregate journal entries into the 'summary entry' and post this to the ledger. 
+        (many-to-one)
+        '''
         if not hasattr(journal_entries, '__iter__'):
             ValueError('\'journal_entries\' must be iterable')
 
@@ -48,12 +51,12 @@ class Journal:
         summary_journal_entry.description = summary_description
         summary_journal_entry.reference = summary_reference
         for field_name, field_value in summary_info_fields.items():
-            summary_journal_entry.info(field_name, field_value)
+            summary_journal_entry.add_info(field_name, field_value)
         
         # Remove current account fields and put new, all-purpose 'Account' field:
         clone = JournalEntry(self)        
         for key, value in clone.fields.items():
-            if isinstance(value, (AccountEntry, list)):
+            if isinstance(value, (AccountRecord, list)):
                 del summary_journal_entry.fields[key]
         summary_journal_entry.fields['Account'] = []
 
@@ -70,7 +73,7 @@ class Journal:
             if key in summary_account_entries:
                 summary_account_entries[key] += account_entry
             else:
-                summary_account_entries[key] = AccountEntry(
+                summary_account_entries[key] = AccountRecord(
                     account_entry.account,
                     account_entry.amount,
                     account_entry.side,
@@ -80,7 +83,7 @@ class Journal:
         for journal_entry in set(journal_entries):
             self.validate_new_journal_entry(journal_entry)
             for value in journal_entry.fields.values():
-                if isinstance(value, AccountEntry):
+                if isinstance(value, AccountRecord):
                     add_to_summary(value)
                     continue
                 if isinstance(value, list):
@@ -115,22 +118,22 @@ class Journal:
 
          FIELD_NAME is always a string,
 
-         FIELD_VALUE can contain the following variables:
-          - None value means: 'this is info field'
-                for example
-                            'Date': None
-                            'Description': None
-          - Entry object means: 'this is the place for single account entry' (fixed side)
-                for example
-                            'Cash': Entry(None, 0, 0, transaction)
-                            'Sale': Entry(None, 0, 1, transaction)
-                            'Sale Tax': Entry(None, 0, 1, transaction)
-          - [] (list) means: 'this is the place for multiple account entries' (free side)
-                for example
+         FIELD_VALUE can contain the following kind of variables:
+          - 'None' value means: 'this is info field'. 
+            (fields "data", "description" and "reference" are defined in JournalEntry class)
+            For example:
+                            'Info': None
+          - 'Entry' object means: 'this is the place for single account entry' (fixed side)
+            For example:
+                            'Cash': Entry(None, 0, AccountSide.DEBIT, transaction)
+                            'Sale': Entry(None, 0, AccountSide.CREDIT, transaction)
+                            'Sale Tax': Entry(None, 0, AccountSide.CREDIT, transaction)
+          - 'list' [] means: 'this is the place for multiple account entries' (both sides)
+            For example
                             'Account': []
         '''
         return {
-            'Account':      []      # debit/credit account entries
+            'Account':      []      # debit/credit account records
         }
 
     def validate_new_journal_entry(self, journal_entry):
@@ -138,8 +141,10 @@ class Journal:
             raise ValueError('the specified entry is binded to another journal')
         if journal_entry in self.journal_entries:
             raise ValueError('the specified entry already exist in the journal')
+        if not journal_entry.date:
+            raise ValueError('the specified entry has empty date')
         for field in journal_entry.fields.values():
-            if isinstance(field, AccountEntry):
+            if isinstance(field, AccountRecord):
                 if not field.journal_entry:
                     raise ValueError('account entry has no journal entry')
                 if field.journal_entry != journal_entry:
@@ -179,35 +184,87 @@ class JournalEntry:
     def is_balanced(self):
         return self.get_debit() == self.get_credit()
 
-    def info(self, field_tag: str, field_value):
+    def add_info(self, field_tag: str, field_value):
         ''' Set info field '''
-        if field_tag not in self.fields.keys():
-            raise RuntimeError(f'usage of unexpected (unknown?) field \'{field_tag}\'')
-        self.fields[field_tag] = field_value
+        match field_tag:
+            case "date":
+                self.date = field_value
+            case "description":
+                self.description = field_value
+            case "reference":
+                self.reference = field_value
+            case _:
+                if field_tag not in self.fields.keys():
+                    raise RuntimeError(f'usage of unexpected (unknown?) field \'{field_tag}\'')
+                self.fields[field_tag] = field_value
 
     def debit(self, field_tag: str, account, amount: int):
         ''' Set debit entry '''
-        self.flow(field_tag, account, amount, AccountSide.DEBIT)
+        # self.flow(field_tag, account, amount, AccountSide.DEBIT)
+        self.add_record(field_tag, amount, account=account, side=AccountSide.DEBIT)
 
     def credit(self, field_tag: str, account, amount: int):
         ''' Set credit entry '''
-        self.flow(field_tag, account, amount, AccountSide.CREDIT)
+        # self.flow(field_tag, account, amount, AccountSide.CREDIT)
+        self.add_record(field_tag, amount, account=account, side=AccountSide.CREDIT)
 
     def flow(self, field_tag: str, account, amount: int, side: AccountSide):
-        ''' Set account entry '''
+        ''' Add new Account Record '''
         if field_tag not in self.fields.keys():
             raise RuntimeError(f'unknown field \'{field_tag}\'')
         if side != AccountSide.DEBIT and side != AccountSide.CREDIT:
             raise ValueError('account side must be DEBIT or CREDIT')
-
-        if isinstance(self.fields[field_tag], AccountEntry):
+        if isinstance(self.fields[field_tag], AccountRecord):
             if self.fields[field_tag].side != side:
-                raise ValueError(f'Journal field \'{field_tag}\' expects {self.fields[field_tag].side} entry.')
-            self.fields[field_tag] = AccountEntry(account, amount, side, self, None)
+                raise ValueError(f'Journal field \'{field_tag}\' expects {self.fields[field_tag].side} operation.')
+            self.fields[field_tag] = AccountRecord(account, amount, side, self, None)
         elif isinstance(self.fields[field_tag], list):
-            self.fields[field_tag].append(AccountEntry(account, amount, side, self, None))
+            self.fields[field_tag].append(AccountRecord(account, amount, side, self, None))
         else:
             raise RuntimeError(f'Journal field \'{field_tag}\' is not dedicated for debit/credit entries.')
+
+    # def add_default_record(self, field_tag: str, amount: int):
+    #     if field_tag not in self.fields.keys():
+    #         raise RuntimeError(f'unknown field \'{field_tag}\'')
+    #     account = None
+    #     side = None
+    #     if isinstance(self.fields[field_tag], AccountRecord):
+    #         if not self.fields[field_tag].account:
+    #             raise ValueError(f"field '{field_tag}' without specified Account cannot be used in this function")
+    #     elif isinstance(self.fields[field_tag], list):
+    #         raise ValueError(f"field '{field_tag}' intended for a list of account records cannot be used in this function")
+    
+    #     self.flow(
+    #         field_tag=field_tag,
+    #         account=self.fields[field_tag].account,
+    #         side=self.fields[field_tag].side,
+    #         amount=amount
+    #     )
+
+    def add_record(self, field_tag: str, amount: int, /, account = None, side: AccountSide = None):
+        if field_tag not in self.fields.keys():
+            raise RuntimeError(f'unknown field \'{field_tag}\'')
+
+        if isinstance(self.fields[field_tag], AccountRecord):
+            if self.fields[field_tag].account and not account:
+                account = self.fields[field_tag].account
+            if self.fields[field_tag].side and not side:
+                side = self.fields[field_tag].side
+        elif isinstance(self.fields[field_tag], list):
+            if not account or not side:
+                raise ValueError(f"field '{field_tag}' intended for a list of account records expects both 'account' and 'side' arguments provided")
+        else:
+            raise RuntimeError(f'Journal field \'{field_tag}\' is not dedicated for debit/credit entries.')
+
+        if not account:
+            raise ValueError(f"Account not specified")
+        if not side:
+            raise ValueError(f"Account Side not specified")
+
+        if isinstance(self.fields[field_tag], AccountRecord):
+            self.fields[field_tag] = AccountRecord(account, amount, side, self, None)
+        elif isinstance(self.fields[field_tag], list):
+            self.fields[field_tag].append(AccountRecord(account, amount, side, self, None))
 
     def get_debit(self):
         return self._get_side_sum(AccountSide.DEBIT)
@@ -218,7 +275,7 @@ class JournalEntry:
     def _get_side_sum(self, side):
         result = 0
         for field in self.fields.values():
-            if isinstance(field, AccountEntry):
+            if isinstance(field, AccountRecord):
                 if field.side != AccountSide.DEBIT and field.side != AccountSide.CREDIT:
                     raise ValueError('account side must be DEBIT or CREDIT')
                 if field.amount and not field.account:
@@ -237,14 +294,14 @@ class JournalEntry:
 
     def _get_currency(self):
         for field in self.fields.values():
-            if isinstance(field, AccountEntry):
+            if isinstance(field, AccountRecord):
                 return field.account.currency
             elif isinstance(field, list):
                 for account_entry in field:
                     return account_entry.account.currency
 
     def post_this(self):
-        ''' Post this journal entry to the ledger (single post) '''
+        ''' Post this journal entry to the ledger (single post - one-to-one) '''
         if not self.is_balanced():
             raise RuntimeError('not balanced journal entry')
         if self.journal is None:
@@ -257,9 +314,9 @@ class JournalEntry:
         if not post:
             raise ValueError('post is None')
         for name, value in self.fields.items():
-            if isinstance(value, AccountEntry):
+            if isinstance(value, AccountRecord):
                 if value.amount and value.account:
-                        self.fields[name] = AccountEntry(
+                        self.fields[name] = AccountRecord(
                             value.account,
                             value.amount,
                             value.side,
@@ -269,7 +326,7 @@ class JournalEntry:
             elif isinstance(value, list):
                 for idx, account_entry in enumerate(value):
                     if account_entry.amount and account_entry.account:
-                        value[idx] = AccountEntry(
+                        value[idx] = AccountRecord(
                             account_entry.account,
                             account_entry.amount,
                             account_entry.side,
