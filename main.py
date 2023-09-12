@@ -51,8 +51,8 @@ def run():
     # entry1.info('Description', 'Correction')
     entry1.date = '2022-12-30'
     entry1.description = "Correction"
-    entry1.debit('Account', account100, currency.amount2raw(1897.20))
-    entry1.credit('Account', account200, currency.amount2raw(1897.20))
+    entry1.debit('Account', currency.amount2raw(1897.20), account100)
+    entry1.credit('Account', currency.amount2raw(1897.20), account200)
     # entry1.debit('Account', account100, currency.amount2raw(-897.20))
     # entry1.credit('Account', account200, currency.amount2raw(-897.20))
     entry1.add_record("Account", currency.amount2raw(-897.20), account=account100, side=AccountSide.DEBIT)
@@ -63,7 +63,7 @@ def run():
         def define_fields(self, transaction):
             return {
                 'Cash': AccountRecord(account100, 0, AccountSide.DEBIT, transaction, None),
-                'Sale': AccountRecord(account200, 0, AccountSide.CREDIT, transaction, None),
+                'Sale': AccountRecord(account200, 0,None, transaction, None),
                 'Tax': AccountRecord(None, 0, AccountSide.CREDIT, transaction, None)
             }
 
@@ -90,9 +90,9 @@ def run():
     entry3 = JournalEntry(journal=sale_journal)
     entry3.date = '2023-01-03'
     entry3.description = 'Sold 3 books'
-    entry3.debit('Cash', account100, 25000)
-    entry3.credit('Sale', account200, 21000)
-    entry3.credit('Tax', account300, 4000)
+    entry3.debit('Cash', 25000, account100)
+    entry3.credit('Sale', 21000, account200)
+    entry3.credit('Tax', 4000, account300)
     entry3.post_this()
 
 
@@ -100,22 +100,22 @@ def run():
     entry4 = JournalEntry(journal=journal)
     entry4.date= '2023-01-03'
     entry4.description = 'Purchase of the printer'
-    entry4.credit('Account', account100, 158)
-    entry4.debit('Account', account400, 158)
+    entry4.credit('Account', 158, account100)
+    entry4.debit('Account', 158, account400)
     entry4.post_this()
 
     entry5 = JournalEntry(journal=journal)
     entry5.date = '2023-01-04'
     entry5.description = 'Accept the printer as a cost'
-    entry5.credit('Account', account500, 258)
-    entry5.debit('Account', account400, 258)
+    entry5.credit('Account', 258, account500)
+    entry5.debit('Account', 258, account400)
     # entry5.commit()
 
     entry6 = JournalEntry(journal=journal)
     entry6.date = '2023-01-05'
     entry6.description = 'Accept the printer as a cost'
-    entry6.debit('Account', account500, 258)
-    entry6.credit('Account', account400, 258)
+    entry6.debit('Account', 258, account500)
+    entry6.credit('Account', 258, account400)
     # entry6.commit()
 
     info = JournalEntry(journal=journal)
@@ -181,10 +181,10 @@ def run():
     b = Account("Goods", GL(), currency)
     j = JournalEntry(GJ())
 
-    j.add_info("date", '2023-01-03')
+    j.date = '2023-01-03'
     j.description = 'Purchase of the printer'
-    j.credit("Account", a, 100)
-    j.debit("Account", b, 100)
+    j.credit("Account", 100, a)
+    j.debit("Account", 100, b)
     j.post_this()
 
     print('----------------------------')
