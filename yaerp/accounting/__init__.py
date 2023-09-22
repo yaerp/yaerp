@@ -1,5 +1,6 @@
 from yaerp.accounting.journal import Journal
 from yaerp.accounting.ledger import Ledger
+from yaerp.accounting.marker import PropertyContainer
 
 
 class Singleton(type):
@@ -10,10 +11,17 @@ class Singleton(type):
         return cls._instances[cls]
 
 
-class GL(Ledger, metaclass=Singleton):
+class GeneralLedger(Ledger, metaclass=Singleton):
+    ''' Get General Ledger instance '''
     def __init__(self):
         super().__init__("General Ledger")
 
-class GJ(Journal, metaclass=Singleton):
+class GeneralJournal(Journal, metaclass=Singleton):
+    ''' Get General Journal instance '''
     def __init__(self):
-        super().__init__("General Journal", GL())
+        super().__init__("General Journal", GeneralLedger())
+
+class AccountTypes(PropertyContainer):
+    ''' Get Account Types container instance '''
+    def __init__(self):
+        super().__init__()

@@ -70,6 +70,13 @@ class Account:
                 return filter(lambda p: p.side == AccountSide.CREDIT, self.posted_records)
         return iter([])
 
+    def __hash__(self):
+        return hash(id(self))
+    
+    def __eq__(self, other):
+        return self is other
+
+
 @dataclass(frozen=True)
 class AccountRecord:
     """ 

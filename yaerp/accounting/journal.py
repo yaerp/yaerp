@@ -42,7 +42,7 @@ class Journal:
         (many-to-one)
         '''
         if not hasattr(journal_entries, '__iter__'):
-            ValueError('\'journal_entries\' must be iterable')
+            ValueError('\'journal_entries\' is not iterable')
 
         # Build empty summary entry (similar to General Journal entry):
         summary_journal_entry = JournalEntry(self)
@@ -134,8 +134,9 @@ class Journal:
           - 'None' value means: 'this is info field'. 
             For example:
                         'Info': None
-            Note that fields "data", "description" and "reference" are 
-            already defined in JournalEntry class and defining these is not needed
+
+            Note that 3 fields names: "data", "description" and "reference" are not needed to define here.
+            The variables with these names are part of JournalEntry class.
 
         '''
         return {
@@ -197,36 +198,36 @@ class JournalEntry:
         self.fields[field_tag] = value
 
     def debit(self, field_tag: str, amount: int, account):
-        ''' Fill the Journal's Entry with the new debit Record '''
+        ''' Add a Debit Record '''
         # self.flow(field_tag, account, amount, AccountSide.DEBIT)
         self.add_record(field_tag, amount, account=account, side=AccountSide.DEBIT)
 
     def credit(self, field_tag: str, amount: int, account):
-        ''' Fill the Journal's Entry with the new credit Record '''
+        ''' Add a Credit Record '''
         # self.flow(field_tag, account, amount, AccountSide.CREDIT)
         self.add_record(field_tag, amount, account=account, side=AccountSide.CREDIT)
 
-    def flow(self, field_tag: str, amount: int, account, side: AccountSide):
-        ''' Add new Account Record '''
-        if field_tag not in self.fields.keys():
-            raise RuntimeError(f'unknown field \'{field_tag}\'')
-        if side != AccountSide.DEBIT and side != AccountSide.CREDIT:
-            raise ValueError('account side must be DEBIT or CREDIT')
-        if isinstance(self.fields[field_tag], AccountRecord):
-            if self.fields[field_tag].side != side:
-                raise ValueError(f'Journal field \'{field_tag}\' expects {self.fields[field_tag].side} operation.')
-            self.fields[field_tag] = AccountRecord(account, amount, side, self, None)
-        elif isinstance(self.fields[field_tag], list):
-            self.fields[field_tag].append(AccountRecord(account, amount, side, self, None))
-        else:
-            raise RuntimeError(f'Journal field "{field_tag}" is not dedicated for debit/credit entries.')
+    # def flow(self, field_tag: str, amount: int, account, side: AccountSide):
+    #     ''' Add a Debit/Credit '''
+    #     if field_tag not in self.fields.keys():
+    #         raise RuntimeError(f'unknown field \'{field_tag}\'')
+    #     if side != AccountSide.DEBIT and side != AccountSide.CREDIT:
+    #         raise ValueError('account side must be DEBIT or CREDIT')
+    #     if isinstance(self.fields[field_tag], AccountRecord):
+    #         if self.fields[field_tag].side != side:
+    #             raise ValueError(f'Journal field \'{field_tag}\' expects {self.fields[field_tag].side} operation.')
+    #         self.fields[field_tag] = AccountRecord(account, amount, side, self, None)
+    #     elif isinstance(self.fields[field_tag], list):
+    #         self.fields[field_tag].append(AccountRecord(account, amount, side, self, None))
+    #     else:
+    #         raise RuntimeError(f'Journal field "{field_tag}" is not dedicated for debit/credit entries.')
 
     def add_record(self, field_tag: str, amount: int, /, account = None, side: AccountSide = None):
         ''' 
-        Fill the Journal's Entry "account field" with the new Record.
+        Add Debit/Credit Record
 
-        If no 'account' or no 'side' argument provided then method tries get these 
-        values from the Journal Entry field definition.
+        If no 'account' or no 'side' argument provided the method tries get these 
+        values from the field definition.
         '''
         if field_tag not in self.fields.keys():
             raise RuntimeError(f'unknown field "{field_tag}"')
@@ -285,6 +286,7 @@ class JournalEntry:
             elif isinstance(field, list):
                 for account_entry in field:
                     return account_entry.account.currency
+        raise RuntimeError("currency not found")
 
     def post_this(self):
         ''' Post this journal entry to the ledger (single post - one-to-one) '''
@@ -330,6 +332,6 @@ class JournalEntry:
             else:
                 post_info = 'posted single entry'
         return ' '.join([
-            f"{str(self.date)}, {self.description}, {currency.raw2amount(self.get_debit())}",
+            f"{str(self.date)}, {self.description}",
             f"({self.journal.tag}, {post_info})"
         ])

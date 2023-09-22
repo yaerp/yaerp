@@ -1,13 +1,14 @@
 from decimal import Decimal
 import locale
 import operator
-from yaerp.accounting import GJ, GL
+from yaerp.accounting import AccountTypes, GeneralJournal, GeneralLedger
 from yaerp.accounting.ledger import Ledger
 from yaerp.accounting.journal import Journal
 from yaerp.accounting.journal import JournalEntry
 from yaerp.accounting.account import Account
 from yaerp.accounting.account import AccountSide
 from yaerp.accounting.account import AccountRecord
+from yaerp.accounting.marker import Assets, BalanceSheet, Clearing, Equity, Expenses, IncomeStatement, Liabilities, Revenues
 from yaerp.accounting.reports.t_account import T_account, render_journal_entries, render_journal_entries2, render_journal_entry, render_journal_entry2, render_layout
 from yaerp.model.money import Money
 from yaerp.model.currency import Currency
@@ -63,7 +64,7 @@ def run():
         def define_fields(self, transaction):
             return {
                 'Cash': AccountRecord(account100, 0, AccountSide.DEBIT, transaction, None),
-                'Sale': AccountRecord(account200, 0,None, transaction, None),
+                'Sale': AccountRecord(account200, 0, AccountSide.CREDIT, transaction, None),
                 'Tax': AccountRecord(None, 0, AccountSide.CREDIT, transaction, None)
             }
 
@@ -73,9 +74,9 @@ def run():
     entry2.date = '2023-01-01'
     entry2.description = 'Example of Sales'
     #entry2.credit('Sale', account200, 3553300)
-    entry2.add_record("Sale", 3553300)
+    entry2.add_record("Sale", 355330000)
     # entry2.debit('Cash', account100, 3553300)
-    entry2.add_record("Cash", 3553300)
+    entry2.add_record("Cash", 355330000)
     entry2.post_this()
  
     # entry2.commit()
@@ -177,9 +178,9 @@ def run():
         print(account_entry)
     print('----------------------------')
 
-    a = Account("Sale", GL(), currency)
-    b = Account("Goods", GL(), currency)
-    j = JournalEntry(GJ())
+    a = Account("Sale", GeneralLedger(), currency)
+    b = Account("Goods", GeneralLedger(), currency)
+    j = JournalEntry(GeneralJournal())
 
     j.date = '2023-01-03'
     j.description = 'Purchase of the printer'
@@ -188,10 +189,48 @@ def run():
     j.post_this()
 
     print('----------------------------')
-    for account_entry in GL().posts:
+    for account_entry in GeneralLedger().posts:
         print(account_entry)
     print('----------------------------')
 
+
+    at = AccountTypes()
+    at.append_property_value(BalanceSheet.ASSETS, None)
+    at.append_property_value(Assets.RECEIVABLES, BalanceSheet.ASSETS)
+    at.append_property_value(Assets.TAX_RECEIVABLES, BalanceSheet.ASSETS)
+    at.append_property_value(Assets.BANK, BalanceSheet.ASSETS)
+    at.append_property_value(Assets.CASH, BalanceSheet.ASSETS)
+
+    at.append_property_value(BalanceSheet.LIABILITIES, None)
+    at.append_property_value(Liabilities.PAYABLES, BalanceSheet.LIABILITIES)
+    at.append_property_value(Liabilities.TAX_PAYABLES, BalanceSheet.LIABILITIES)
+
+    at.append_property_value(BalanceSheet.EQUITY, None)
+    at.append_property_value(Equity.OWNERS_CAPITAL, BalanceSheet.EQUITY)
+    at.append_property_value(Equity.DIVIDENDS, BalanceSheet.EQUITY)
+    at.append_property_value(Equity.PROFIT, BalanceSheet.EQUITY)
+    at.append_property_value(Equity.RETAINED_EARNINGS, BalanceSheet.EQUITY)
+
+    at.append_property_value(IncomeStatement.REVENUES, None)
+    at.append_property_value(Revenues.SALES, IncomeStatement.REVENUES)
+    at.append_property_value(Revenues.OTHER_INCOME, IncomeStatement.REVENUES)
+
+    at.append_property_value(IncomeStatement.EXPENSES, None)
+    at.append_property_value(Expenses.COST_OF_GOODS_SOLD, IncomeStatement.EXPENSES)
+    at.append_property_value(Expenses.DEPRECIATION_EXPENSE, IncomeStatement.EXPENSES)
+    at.append_property_value(Expenses.OTHER_EXPENSE, IncomeStatement.EXPENSES)
+
+    at.append_property_value(Clearing.ASSET_CLEARING_ACCOUNT, None)
+    at.append_property_value(Clearing.LIABILITY_CLEARING_ACCOUNT, None)
+    at.append_property_value(Clearing.PURCHASE_CLEARING_ACCOUNT, None)
+    at.append_property_value(Clearing.SALES_CLEARING_ACCOUNT, None)
+
+    assert at.has_all_of_values(Assets.CASH, BalanceSheet.ASSETS, Assets.CASH) == True
+    assert at.has_any_of_value(Assets.CASH, BalanceSheet.ASSETS)
+    assert at.has_type(Assets.CASH, BalanceSheet)
+    at.append_property_value(Assets.CASH, Assets.BANK)
+    at.remove_type(Assets.CASH, Assets)
+    print(at.has_any_of_value(Assets.CASH, IncomeStatement.EXPENSES, IncomeStatement.REVENUES, BalanceSheet.ASSETS))
     # operator.
 
     #print(account100.get_debit(predicate=lambda post: '2022' in post.transaction.fields['Date']))

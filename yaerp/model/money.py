@@ -25,7 +25,12 @@ class Money(Quantity):
         return self.currency.raw2amount(self.__raw_value)
 
     def __repr__(self) -> str:
-        return ''.join([self.__class__.__name__, '(', self.currency.raw2amount(self.__raw_value), ', ', self.currency.__repr__(), ')'])
+        return ''.join([
+            self.__class__.__name__, 
+            '(', self.currency.raw2amount(self.__raw_value), 
+            ', ', self.currency.__repr__(), 
+            ')'
+        ])
 
     def raw_int(self):
         return self.__raw_value
