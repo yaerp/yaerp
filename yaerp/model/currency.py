@@ -5,7 +5,8 @@ class Currency(Metric):
 
     def __init__(self, alphabetic_code, numeric_code, ratio_of_subunits_to_unit, international_name, 
                  national_unit_symbol=None, national_subunit_symbol=None, definition=None,
-                 fraction_char='.', group_separator_char='\u00A0', separator_positions=(3,6,9,12,15,18)
+                 fraction_char='.', group_separator_char='\u00A0', separator_positions=(3,6,9,12,15,18),
+                 separator_predicate=lambda amount: abs(amount) > 999999
                  ) -> None:
         super().__init__(international_name, alphabetic_code, definition)
         self.numeric_code = numeric_code
@@ -16,12 +17,17 @@ class Currency(Metric):
         self.fraction_char = fraction_char
         self.group_separator_char = group_separator_char
         self.separator_positions = separator_positions
+        if separator_predicate:
+            self.separator_predicate = separator_predicate
+        else:
+            self.separator_predicate = lambda _: True
 
-    def raw2amount(self, raw_int_value, new_fraction_char=None, new_group_separator_char=None, new_separator_positions=None):
+    def raw2amount(self, raw_int_value, new_fraction_char=None, ommit_zero_fraction=False, new_group_separator_char=None, new_separator_positions=None, new_separator_predicate=None):
         ''' Convert raw integer value to the actual amount '''
         if raw_int_value is not int:
             ValueError('input argument must be integer')
         result = str(raw_int_value)
+        zero_fraction = bool(raw_int_value % self.ratio_of_subunits_to_unit) == 0
         sign = ''
         if result[0] == '-':
             sign = '-'
@@ -33,6 +39,7 @@ class Currency(Metric):
         fract_char = None
         sep_char = None
         sep_pos = None
+        sep_pred = None
         if new_fraction_char:
             fract_char = new_fraction_char
         else:
@@ -45,7 +52,11 @@ class Currency(Metric):
             sep_pos = new_separator_positions
         else:
             sep_pos = self.separator_positions
-        if sep_char and sep_pos:
+        if new_separator_predicate:
+            sep_pred = new_separator_predicate
+        else:
+            sep_pred = self.separator_predicate
+        if sep_char and sep_pos and sep_pred(raw_int_value):
             rev_parts = []
             for idx, c in enumerate(reversed(integ_part_str)):
                 if idx in sep_pos:
@@ -53,7 +64,10 @@ class Currency(Metric):
                 rev_parts.append(c)
             integ_part_str = ''.join(reversed(rev_parts))
         if self.fraction_pos > 0:
-            result = ''.join([sign, integ_part_str, fract_char, fract_part_str])
+            if ommit_zero_fraction and zero_fraction:
+                result = ''.join([sign, integ_part_str])
+            else:                  
+                result = ''.join([sign, integ_part_str, fract_char, fract_part_str])
         return result
 
     def amount2raw(self, regular_amount, current_fraction_char=None, current_group_separator_char=None):

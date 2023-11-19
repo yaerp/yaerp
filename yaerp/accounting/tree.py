@@ -6,7 +6,7 @@ from yaerp.accounting.account import Account
 
 class AccountTree():
 
-    def __init__(self, account, parent=None):
+    def __init__(self, account: Account, parent: 'AccountTree' = None):
         # check arguments
         if account is not None:
             assert isinstance(account, Account)
@@ -18,9 +18,6 @@ class AccountTree():
         # make this instance as parent's child
         if parent is not None:
             parent.append_child(self)
-            # if parent.children is None:
-            #     parent.children = list()
-            # parent.children.append(self)
         self.account = account
         self.parent = parent
         self.children = None
@@ -107,9 +104,9 @@ class AccountTree():
                 result_not_used = False
             else:
                 if select_used:
-                    result_used = len(account.posts) > 0
+                    result_used = len(account.posted_records) > 0
                 if select_not_used:
-                    result_not_used = len(account.posts) == 0
+                    result_not_used = len(account.posted_records) == 0
 
             if select_nodes and select_leafs:
                 pass
@@ -160,11 +157,11 @@ class AccountTree():
 
     def internal_posts_iter(self):
         if self.has_nodes():
-            posts = chain(self.account.posts)
+            posts = chain(self.account.posted_records)
             for internal in self.get_internals_gen():
-                posts = chain(posts, internal.account.posts)
+                posts = chain(posts, internal.account.posted_records)
         else:
-            posts = iter(self.account.posts)
+            posts = iter(self.account.posted_records)
         return posts
 
     def has_analytical_leaf(self):
@@ -197,7 +194,7 @@ class AccountTree():
 
     def is_group_of_analytical_accounts_node(self):
         # has any analytical accounts or group accounts as children
-        if self.children is None or len(self.children) == 0:
+        if not self.children:
             return False
         return reduce(
             lambda prev, curr: prev and (curr.is_analytical_account_node() or curr.is_group_of_analytical_accounts_node()),
@@ -207,7 +204,7 @@ class AccountTree():
         # all children (if they are exist) are analytical accounts
         if self.is_analytical_account_node():
             return False
-        if self.children is None or len(self.children) == 0:
+        if not self.children:
             return True
         return reduce(
             lambda prev, curr: prev and (curr.is_analytical_account_node() or curr.is_group_of_analytical_accounts_node()),
@@ -217,7 +214,8 @@ class AccountTree():
         if self.account is None:
             return False
         # return self.account.marker.has(Marks.ANALYTICAL_ACCOUNT)
-        return self.account.analytical
+        # return self.account.analytical
+        return False
 
     def get_ledger_account_node(self):
         analytical = self.is_analytical_account_node()
@@ -269,21 +267,23 @@ class AccountTree():
 
     def __str__(self):
         result = ''
+        if not self.parent:
+            result = '<root> '
         if self.account:
-            result = '[{}] {}'.format(self.account.tag, self.account.name)
+            result += '[{}] {}'.format(self.account.tag, self.account.name)
         else:
-            result = 'root'
+            result += '<dir>'
             return result
         if self.account.currency:
-            result += ' (' + self.account.currency + ')'
+            result += ' (' + str(self.account.currency) + ')'
         if self.is_group_of_ledger_accounts_node():
             result += ' (group account)'
         if self.is_ledger_account_node():
             result += ' (ledger account)'
         if self.is_analytical_account_node():
             result += ' (analytical account)'
-        if (self.account and len(self.account.posts) > 0) or any(
-                n for n in self.get_internals_gen() if len(n.account.posts) > 0):
+        if (self.account and len(self.account.posted_records) > 0) or any(
+                n for n in self.get_internals_gen() if len(n.account.posted_records) > 0):
             dr = self.account.get_debit()
             cr = self.account.get_credit()
             bl = self.account.get_balance()

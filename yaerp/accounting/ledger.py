@@ -2,6 +2,7 @@ import operator
 import uuid
 from yaerp.accounting.account import AccountRecord
 from yaerp.accounting.post import Post
+from yaerp.tools.sid import SID
 from yaerp.tools.sorted_collection import SortedCollection
 
 
@@ -9,19 +10,29 @@ class Ledger:
     '''
     Accounting book
     '''
-    def __init__(self, tag: str):
+    def __init__(self, tag: str, name: str):
         self.tag = tag
-        self.posts = SortedCollection([], key=operator.attrgetter('journal_entry.date')) # ledger's main container
+        self.name = name
+        self.posts = SortedCollection(
+            [], 
+            key=operator.attrgetter('journal_entry.date', 'journal_entry.time', 'journal_entry.sid')
+        ) # ledger's main container
         self.accounts = {} # associated accounts
         self.journals = {} # associated journals
 
-    def post_journal_entry(self, journal, journal_entry):
+    def post_journal_entry(self, journal, journal_entry, use_guid=False):
         self.__validate_journal_entry(journal, journal_entry)
-        post = Post(uuid.uuid4().int, False)
+        if journal_entry.is_zeroed():
+            raise ValueError("posted entry must contain non-zero amounts")
+        if use_guid:
+            new_post_id = uuid.uuid4().int
+        else:
+            new_post_id = SID().new()
+        post = Post(new_post_id, False)
         for name, field in journal_entry.fields.items():
-            if isinstance(field, AccountRecord) and field.amount:
+            if isinstance(field, AccountRecord) and field.raw_amount:
                 posted_record = AccountRecord(field.account, 
-                                                    field.amount, 
+                                                    field.raw_amount, 
                                                     field.side, 
                                                     field.journal_entry, 
                                                     post)
@@ -30,25 +41,32 @@ class Ledger:
             elif isinstance(field, list):
                 for idx, element in enumerate(field):
                     posted_record = AccountRecord(element.account, 
-                                                        element.amount, 
+                                                        element.raw_amount, 
                                                         element.side, 
                                                         element.journal_entry, 
                                                         post)
                     self.__append_account_record(posted_record)
                     field[idx] = posted_record 
-        journal.journal_entries.insert_right(journal_entry)
+
+        ## czy to jest konieczne? kontener moze przechowywac zarowno nowe jak i zaksiegowane
+        # journal.journal_entries.insert_right(journal_entry)
+
         journal_entry.post = post
         
-    def post_summary_entry(self, journal, summary_journal_entry):
+    def post_summary_entry(self, journal, summary_journal_entry, use_guid=False):
         self.__validate_journal_entry(journal, summary_journal_entry)
-        summary_post = Post(uuid.uuid4().int, True)
+        if use_guid:
+            new_post_id = uuid.uuid4().int
+        else:
+            new_post_id = SID().new()
+        summary_post = Post(new_post_id, True)
         for name, field in summary_journal_entry.fields.items():
             if isinstance(field, AccountRecord):
                 raise RuntimeError(f'not expected field "{name}"')
             elif isinstance(field, list):
                 for idx, element in enumerate(field):
                     posted_record = AccountRecord(element.account, 
-                                                        element.amount, 
+                                                        element.raw_amount, 
                                                         element.side, 
                                                         element.journal_entry, 
                                                         summary_post)
@@ -67,7 +85,7 @@ class Ledger:
                     self.__validate_account_record(journal, element)
 
     def __validate_account_record(self, journal, account_record):
-        if account_record.amount and not account_record.account:
+        if account_record.raw_amount and not account_record.account:
             raise ValueError('account entry has no parent account')
         if account_record.account and account_record.account not in self.accounts.values():
             raise ValueError('account entry has parent account associated with an another ledger')

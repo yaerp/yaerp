@@ -1,18 +1,19 @@
+from decimal import Decimal
 from math import floor
 from .quantity import Quantity
 from .currency import Currency
 
 class Money(Quantity):
 
-    def __init__(self, currency: Currency, amount, *, raw: int = 0 ) -> None:
-        if amount and raw:
-            ValueError("'amount' should be set to zero if 'raw' parameter is in use")
+    def __init__(self, currency: Currency, *, amount: int | str | float | Decimal, raw_value: int = 0 ) -> None:
+        if amount and raw_value:
+            ValueError("use only one of the following named arguments: 'amount', 'raw_value'")
         super().__init__()
         self.currency = currency
         if amount:        
             self.__raw_value = self.currency.amount2raw(amount)
         else:
-            self.__raw_value = raw
+            self.__raw_value = raw_value
 
     def __str__(self):
         return ''.join([self.currency.symbol, "\u00A0", self.text()])
@@ -36,27 +37,27 @@ class Money(Quantity):
         return self.__raw_value
 
     def __abs__(self):
-        return Money(self.currency, 0, raw=abs(self.__raw_value))
+        return Money(self.currency, 0, raw_value=abs(self.__raw_value))
 
     def __bool__(self):
         return self.__raw_value.__bool__()
 
     def __neg__(self):
-        return Money(self.currency, 0, raw=-self.__raw_value)
+        return Money(self.currency, 0, raw_value=-self.__raw_value)
 
     def __add__(self, other):
         if self.currency != other.currency:
             raise ValueError('attempt to add two different currencies')
-        return Money(self.currency, 0, raw=(self.__raw_value + other.__raw_value))
+        return Money(self.currency, 0, raw_value=(self.__raw_value + other.__raw_value))
 
     def __sub__(self, other):
         if self.currency != other.currency:
             raise ValueError('attempt to subtract 2 different currencies')
-        return Money(self.currency, 0, raw=(self.__raw_value - other.__raw_value))
+        return Money(self.currency, 0, raw_value=(self.__raw_value - other.__raw_value))
 
     def __mul__(self, coefficient):
         result = self._raw_mul(coefficient)
-        return Money(self.currency, 0, raw=result)
+        return Money(self.currency, 0, raw_value=result)
 
     def _raw_mul(self, coefficient):
         if self.currency.ratio_of_subunits_to_unit % 10 == 0:
@@ -72,7 +73,7 @@ class Money(Quantity):
         else:
             result = int(floor(self.__raw_value * self.currency.ratio_of_subunits_to_unit / factor / 10**self.currency.fraction_pos))
             result = result * 10**self.currency.fraction_pos // self.currency.ratio_of_subunits_to_unit
-        return Money(self.currency, 0, raw=result)
+        return Money(self.currency, 0, raw_value=result)
 
     def __truediv__(self, factor):
         if self.currency.ratio_of_subunits_to_unit % 10 == 0:
@@ -80,7 +81,7 @@ class Money(Quantity):
         else:
             result = int(round(self.__raw_value * self.currency.ratio_of_subunits_to_unit / factor / 10**self.currency.fraction_pos, 0))
             result = result * 10**self.currency.fraction_pos // self.currency.ratio_of_subunits_to_unit
-        return Money(self.currency, 0, raw=result)
+        return Money(self.currency, 0, raw_value=result)
 
     def __lt__(self, other):
         return self.__raw_value < other.__raw_value
@@ -133,4 +134,4 @@ class Money(Quantity):
         if reminder > 0:
             raise RuntimeError("Money allocate process remains with some unallocated amount")
         
-        return [Money(self.currency, 0, raw=raw_amount) for raw_amount in parts]
+        return [Money(self.currency, 0, raw_value=raw_amount) for raw_amount in parts]

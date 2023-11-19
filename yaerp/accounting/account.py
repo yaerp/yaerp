@@ -1,10 +1,13 @@
+from copy import copy, deepcopy
 from enum import IntEnum, auto
 from dataclasses import dataclass
 import operator
 from typing import Any
+from uuid import uuid4
 
 from yaerp.model.money import Money
 from yaerp.tools.sorted_collection import SortedCollection
+from yaerp.tools.text import shortify
 
 class AccountSide(IntEnum):
     DEBIT = 1
@@ -17,7 +20,7 @@ class AccountSide(IntEnum):
             return "CREDIT"
 
 class Account:
-    def __init__(self, tag: str, ledger, currency, name = None, guid = None) -> None:
+    def __init__(self, tag: str, ledger, currency, name = None) -> None:
         if not tag:
             raise ValueError("'tag' parameter must be non empty string")
         self.tag = tag
@@ -28,10 +31,13 @@ class Account:
             raise ValueError("'currency' parameter cannot be empty")
         self.currency = currency
         self.name = name
-        self.guid = guid
+        self.guid = uuid4().hex
         if self.ledger:
             ledger.register_account(self)
-        self.posted_records = SortedCollection([], key=operator.attrgetter('journal_entry.date')) # only Ledger should modify this list
+        self.posted_records = SortedCollection(
+            [], 
+            key=operator.attrgetter('journal_entry.date', 'journal_entry.time', 'journal_entry.sid')
+        ) # only Ledger should modify this list
 
     def append_record(self, account_record):
         ''' A Ledger invoke this function when Account Record is in the process of posting. '''
@@ -43,13 +49,23 @@ class Account:
 
     def get_debit(self, predicate=None):
         ''' Amount (raw integer) of debit posts. '''
-        return sum(post.amount for post in self.post_iter(
+        return sum(post.raw_amount for post in self.post_iter(
             dt_posts=True, predicate=predicate))
 
     def get_credit(self, predicate=None):
         ''' Amount (raw integer) of credit posts. '''
-        return sum(post.amount for post in self.post_iter(
+        return sum(post.raw_amount for post in self.post_iter(
             ct_posts=True, predicate=predicate))
+
+    def get_balance(self, predicate=None):
+        ''' Amount (raw integer) of credit posts. '''
+        balance = 0
+        for record in self.post_iter(dt_posts=True, ct_posts=True, predicate=predicate):
+            if record.side == AccountSide.DEBIT:
+                balance += record.raw_amount
+            else:
+                balance -= record.raw_amount
+        return balance
 
     def post_iter(self, dt_posts=False, ct_posts=False, predicate=None):
         ''' Create post iterator. '''
@@ -70,6 +86,62 @@ class Account:
                 return filter(lambda p: p.side == AccountSide.CREDIT, self.posted_records)
         return iter([])
 
+    def get_account_record(self, account_record_sid: str | int = None, post_sid: str | int = None):
+        if account_record_sid and post_sid:
+            raise ValueError('fill only one argument: account_record_sid or post_sid')
+        if not account_record_sid and not post_sid:
+            raise ValueError('fill one argument: account_record_sid or post_sid')
+        if account_record_sid:
+            if isinstance(account_record_sid, str):
+                account_record_sid = int(account_record_sid)
+            for ae in self.posted_records:
+                if ae.sid == account_record_sid:
+                    return ae
+        elif post_sid:
+            if isinstance(post_sid, str):
+                post_sid = int(post_sid)
+            for ae in self.posted_records:
+                if ae.post.identifier == post_sid:
+                    return ae
+        return None
+
+    def header_str(self, account_section_length=33, total_section_length=16, balance_section_length=16) -> str:
+        return (
+f'''-------------Account-------------  -------------------Summary-[{self.currency.symbol}]--------------------\n'''
+f'''<Tag> Name                                Dr                Cr              Balance     \n'''
+f'''---------------------------------  ----------------  ----------------  ----------------'''
+)
+    
+    def account_str(self, length=33):
+        tag_to_print = self.tag
+        max_name_len = length - len(tag_to_print) - 3
+        if self.name:
+            name = self.name
+        else:
+            name = ""
+        name_to_print = shortify(name, max_width=max_name_len)
+        return str.ljust(f'<{self.tag}> {name_to_print}', length)
+
+    def dr_total_amount_str(self, length=16):
+        return str.rjust(self.currency.raw2amount(self.get_debit()), length)
+
+    def cr_total_amount_str(self, length=16):
+        return str.rjust(self.currency.raw2amount(self.get_credit()), length)
+    
+    def balance_amount_str(self, length=16):
+        return str.rjust(self.currency.raw2amount(self.get_balance()), length)
+
+    def __str__(self):
+
+        return f'{self.account_str()}  {self.dr_total_amount_str()}  {self.cr_total_amount_str()}  {self.balance_amount_str()}'
+
+    def records_header_str(self) -> str:
+        return (
+f'''--J/E--  -------------Account-------------  ----------Amount-[{self.currency.symbol}]------------\n'''
+f'''  SID    <Tag> Name                                Dr                Cr       \n'''
+f'''-------  ---------------------------------  ----------------  ----------------'''
+)
+
     def __hash__(self):
         return hash(id(self))
     
@@ -80,18 +152,24 @@ class Account:
 @dataclass(frozen=True)
 class AccountRecord:
     """ 
-    Account Record (a.k.a Account Entry) - essential part of Ledgers and Journal Entries.
+    Account Record (a.k.a Account Entry) - an essential part of Ledgers and Journal Entries.
     Each Account Record describes Debit or Credit operation on specified Account.
     
     A transaction in double-entry bookkepping always affect at least two accounts.
     This transaction always includes at least one Account Record on debit side 
-    and one Account ecord on credit side.
+    and one Account Record on credit side.
     """
     account: Any
-    amount: int
+    raw_amount: int
     side: AccountSide
     journal_entry: Any
     post: Any
+
+    # def __copy__(self):
+    #     raise RuntimeError("explicit copying is not possible - parent journal entry manage copy() operation")
+
+    # def __deepcopy__(self, memo):
+    #     raise RuntimeError("explicit deep copying is not possible - parent journal entry manage copy() operation")
 
     def get_info(self):
         ''' Return tuple with 3 elements:
@@ -113,30 +191,46 @@ class AccountRecord:
 
     def __iadd__(self, other):
         if self.side != other.side:
-            ValueError('cannot add two entries with different account sides')
+            ValueError('addition error: expecting the same account side')
         if self.account != other.account:
-            ValueError('cannot add two entries with different accounts')
+            ValueError('addition error: expecting the same account')
+        if self.post or other.post:
+            ValueError('addition error: expecting not posted account entries')
         return AccountRecord(
             self.account,
-            self.amount + other.amount,
+            self.raw_amount + other.raw_amount,
             self.side,
             self.journal_entry,
-            self.post)
+            None)
+
+    # def account_str(self, length=33):
+    #     tag_to_print = self.account.tag
+    #     max_name_len = length - len(tag_to_print) - 3
+    #     if self.account.name:
+    #         name = self.account.name
+    #     else:
+    #         name = ""
+    #     name_to_print = (name[:max_name_len] + '..') if len(name) > max_name_len else name
+    #     return str.ljust(f'<{self.account.tag}> {name_to_print}', 33)
+
+    def dr_amount_str(self, length=16, empty_str='--', ):
+        if self.side == AccountSide.DEBIT:
+            return str.rjust(self.account.currency.raw2amount(self.raw_amount), length)
+        return str.center(empty_str, length)
+
+    def cr_amount_str(self, length=16, empty_str='--'):
+        if self.side == AccountSide.CREDIT:
+            return str.rjust(self.account.currency.raw2amount(self.raw_amount), length)
+        return str.center(empty_str, length)
 
     def __str__(self) -> str:
-        # info = self.get_info()
-        # journal_field_name = info[0]
-        currency = self.account.currency
-        if self.side == AccountSide.DEBIT:
-            return f'Dr(\"[{self.account.tag}] {self.account.name}\", {currency.raw2amount(self.amount)})'
-            #return f'Dr(\"[{self.account.tag}] {self.account.name}\", {currency.raw2str(self.amount)}) - src: \"{self.journal_entry.journal.tag}/{journal_field_name}\"'
-        elif self.side == AccountSide.CREDIT:
-            return f'Cr(\"[{self.account.tag}] {self.account.name}\", {currency.raw2amount(self.amount)})'
-            # return f'Cr(\"[{self.account.tag}] {self.account.name}\", {currency.raw2str(self.amount)}) - src: \"{self.journal_entry.journal.tag}/{journal_field_name}\"'
-        return 'Incorrect Account Record'
+        je_id_str = str.rjust(str(self.journal_entry.sid), 7)
+        return f'{je_id_str}  {self.account.account_str()}  {self.dr_amount_str()}  {self.cr_amount_str()}'
 
-def Dr(account: Account, amount: int, journal_entry):
-    return AccountRecord(account=account, amount=amount, side=AccountSide.DEBIT, journal_entry=journal_entry)
+def Dr(account: Account, raw_amount: int, journal_entry):
+    ''' Initialize a "Dr" Account Record '''
+    return AccountRecord(account=account, raw_amount=raw_amount, side=AccountSide.DEBIT, journal_entry=journal_entry)
 
-def Cr(account: Account, amount: int, journal_entry):
-    return AccountRecord(account=account, amount=amount, side=AccountSide.CREDIT, journal_entry=journal_entry)
+def Cr(account: Account, raw_amount: int, journal_entry):
+    ''' Initialize a "Cr" Account Record '''
+    return AccountRecord(account=account, raw_amount=raw_amount, side=AccountSide.CREDIT, journal_entry=journal_entry)

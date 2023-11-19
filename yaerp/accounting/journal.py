@@ -1,6 +1,8 @@
 import copy
 import operator
+from uuid import uuid4
 from yaerp.accounting.account import AccountRecord, AccountSide
+from yaerp.tools.sid import SID
 from yaerp.tools.sorted_collection import SortedCollection
 
 
@@ -17,23 +19,24 @@ class Journal:
     Example of business transactions that can be a Journal Entry:
      - sale,
      - purchase,
-     - adjustment,
-     - depreciation,
-     - opening and closing entries.
+     - adjustment entry,
+     - correction entry,
+     - opening and closing entry.
 
-      Range of data required to store in each Journal Entry is determined by Journal.
-    Look into define_fields() method to read the actual Journal Entry structure.
+      The range of data required to store in each Journal Entry is determined by the Journal.
+    Look into initialize_fields() method to read the actual Journal Entry structure.
     Note that new Journal class, derived from this class can define completly new
     set of fields.
     '''
-    def __init__(self, tag: str, ledger):
+    def __init__(self, tag: str, name: str, ledger):
         if not tag:
             raise ValueError('tag is blank')
         self.tag = tag
+        self.name = name
         self.ledger = ledger
         if ledger:
             ledger.register_journal(self)       
-        self.journal_entries = SortedCollection([], key=operator.attrgetter('date'))
+        self.journal_entries = SortedCollection([], key=operator.attrgetter('date', 'time', 'sid'))
 
     def post_aggregated(self, journal_entries, summary_date, summary_description,
                         summary_reference=None, **summary_info_fields):
@@ -66,7 +69,7 @@ class Journal:
         summary_account_entries = {}
 
         def add_to_summary(account_entry):
-            if not account_entry.amount or not account_entry.account:
+            if not account_entry.raw_amount or not account_entry.account:
                 return
             if account_entry.post:
                 raise RuntimeError(f'already posted: account entry \'{account_entry}\', journal entry \'{account_entry.journal_entry}\'')
@@ -76,7 +79,7 @@ class Journal:
             else:
                 summary_account_entries[key] = AccountRecord(
                     account_entry.account,
-                    account_entry.amount,
+                    account_entry.raw_amount,
                     account_entry.side,
                     summary_journal_entry,
                     None)
@@ -104,22 +107,53 @@ class Journal:
         for journal_entry in journal_entries:
             journal_entry._set_posted(post)
 
-    def retrieve_entry(self, post):
-        if post.summary_entry:
-            pass
-        else:
-            pass
+    def gen_new(self):
+        for je in self.journal_entries:
+            if not je.post:
+                yield je
 
-    def define_fields(self, journal_entry):
+    def gen_posted(self):
+        for je in self.journal_entries:
+            if je.post:
+                yield je
+
+    def gen_by_sid(self, *, entry_sid: int = None, entry_sids: list[int] = None):
+        for je in self.journal_entries:
+            if entry_sid and entry_sid == je.sid:
+                yield je
+            if entry_sids and je.sid in entry_sids:
+                yield je
+
+    def get_by_sid(self, entry_sid: int | str):
+        if isinstance(entry_sid, str):
+            entry_sid = int(entry_sid)
+        for je in self.journal_entries:
+            if je.sid == entry_sid:
+                return je
+        raise ValueError(f'Not found Journal Entry "{self.tag}:{entry_sid}"')
+    
+    def get_by_guid(self, entry_guid: int | str):
+        if isinstance(entry_guid, str):
+            entry_guid = int(entry_guid)
+        for je in self.journal_entries:
+            if je.guid == entry_guid:
+                return je
+        raise ValueError(f'Not found Journal Entry "{self.tag}:GUID={entry_guid}"')
+
+    def gen_by_post(self, post):
+        ''' Source entry(ies) for specified post '''
+        for je in self.gen_posted_entries():
+            if je.post == post:
+                yield je
+                if not post.summary_entry:
+                    return
+
+    def initialize_fields(self, journal_entry):
         '''
-        Data structure for Journal Entries.
-        Each transaction is stored as set of the following pairs:
+        Returns a dictionary containing the structure of the Journal Entry
 
-        FIELD_NAME: FIELD_VALUE
-
-         FIELD_NAME is always a string,
-
-         FIELD_VALUE can contain the following kind of variables:
+         A key in the dictionary is simply a filed name.
+         A value ine the dictionary can contain the following kind of variables:
 
           - 'AccountRecord' object means: 'this is the place for single account entry'
             For example:
@@ -146,8 +180,8 @@ class Journal:
     def validate_new_journal_entry(self, journal_entry):
         if journal_entry.journal and self != journal_entry.journal:
             raise ValueError('the specified entry is binded to another journal')
-        if journal_entry in self.journal_entries:
-            raise ValueError('the specified entry already exist in the journal')
+        # if journal_entry in self.journal_entries:
+        #     raise ValueError('the specified entry already exist in the journal')
         if not journal_entry.date:
             raise ValueError('the specified entry has empty date')
         for field in journal_entry.fields.values():
@@ -156,7 +190,7 @@ class Journal:
                     raise ValueError('account record has no journal entry')
                 if field.journal_entry != journal_entry:
                     raise ValueError('account record has invalid journal entry')
-    
+
     def __str__(self) -> str:
         return self.tag
 
@@ -177,19 +211,74 @@ class JournalEntry:
      - depreciation.
     '''
 
-    def __init__(self, journal):
+    def __init__(self, journal: Journal):
+        # unique identifier: date+time+sid
+        self.date: str = None    # RRRR-MM-DD
+        self.time: str = "00:00:00"    # HH:MM:SS
+        self.sid: int = SID().new()     # object identifier (sequence integer in the application)
+        self.guid = uuid4().hex
         self.journal = journal
-        self.date = None
         self.description = None
         self.reference = None
         self.post = None
         if self.journal:
-            self.fields = self.journal.define_fields(self)
+            self.fields = self.journal.initialize_fields(self)
         else:
             self.fields = {}
+        
+    def __copy__(self):
+        cls = self.__class__
+        je_copy = cls.__new__(cls)
+        # je_copy.__dict__.update(self.__dict__)
+        je_copy.date = self.date
+        je_copy.time = self.time
+        je_copy.sid: int = SID().new()  # new SID
+        je_copy.guid = uuid4().hex      # new GUID
+        je_copy.journal = self.journal  # journal remains the same
+        je_copy.description = self.description
+        je_copy.reference = None    # empty reference
+        je_copy.post = None         # empty post
+        je_copy.fields = {}         # create journal field copies
+        for name, value in self.fields.items():
+            if isinstance(value, AccountRecord):
+                ac = self.fields[name].account
+                si = self.fields[name].side
+                am = self.fields[name].raw_amount
+                ar_copy = AccountRecord(ac, am, si, je_copy, None)
+                je_copy.fields[name] = ar_copy
+            elif isinstance(value, list):
+                je_copy.fields[name] = list()
+                for record in value:
+                    ac = self.fields[name].account
+                    si = self.fields[name].side
+                    am = self.fields[name].raw_amount
+                    ar_copy = AccountRecord(ac, am, si, je_copy, None)
+                    je_copy.fields[name].append(ar_copy)
+            else:
+                je_copy.fields[name] = copy.copy(value)
+        return je_copy
+
+    def __deepcopy__(self, memo):
+        return copy.copy(self)
 
     def is_balanced(self):
         return self.get_debit() == self.get_credit()
+    
+    def is_zeroed(self):
+        return self.get_debit() == 0 and self.get_credit() == 0
+    
+    def is_ready_to_post(self):
+        if not self.is_balanced():
+            return False
+        if self.is_zeroed():
+            return False
+        if not self.journal:
+            return False
+        try:
+            self.journal.validate_new_journal_entry(self)
+        except ValueError:
+            return False
+        return True
 
     def add_info(self, field_tag: str, value):
         ''' Fill the Journal's Entry "info field" with the new value '''
@@ -197,15 +286,15 @@ class JournalEntry:
             raise RuntimeError(f'usage of unexpected (unknown?) field \'{field_tag}\'')
         self.fields[field_tag] = value
 
-    def debit(self, field_tag: str, amount: int, account):
+    def debit(self, field_tag: str, raw_amount: int, account):
         ''' Add a Debit Record '''
         # self.flow(field_tag, account, amount, AccountSide.DEBIT)
-        self.add_record(field_tag, amount, account=account, side=AccountSide.DEBIT)
+        self.add_record(field_tag, raw_amount, account=account, side=AccountSide.DEBIT)
 
-    def credit(self, field_tag: str, amount: int, account):
+    def credit(self, field_tag: str, raw_amount: int, account):
         ''' Add a Credit Record '''
         # self.flow(field_tag, account, amount, AccountSide.CREDIT)
-        self.add_record(field_tag, amount, account=account, side=AccountSide.CREDIT)
+        self.add_record(field_tag, raw_amount, account=account, side=AccountSide.CREDIT)
 
     # def flow(self, field_tag: str, amount: int, account, side: AccountSide):
     #     ''' Add a Debit/Credit '''
@@ -222,7 +311,7 @@ class JournalEntry:
     #     else:
     #         raise RuntimeError(f'Journal field "{field_tag}" is not dedicated for debit/credit entries.')
 
-    def add_record(self, field_tag: str, amount: int, /, account = None, side: AccountSide = None):
+    def add_record(self, field_tag: str, raw_amount: int, /, account = None, side: AccountSide = None):
         ''' 
         Add Debit/Credit Record
 
@@ -230,7 +319,7 @@ class JournalEntry:
         values from the field definition.
         '''
         if field_tag not in self.fields.keys():
-            raise RuntimeError(f'unknown field "{field_tag}"')
+            raise RuntimeError(f'unknown field "{field_tag}"; use one of these {list(self.fields.keys())}')
 
         if isinstance(self.fields[field_tag], AccountRecord):
             if self.fields[field_tag].account and not account:
@@ -249,9 +338,9 @@ class JournalEntry:
             raise ValueError(f'the Account Side cannot be determined (no \'side\' argument provided and no side defined for the field "{field_tag}")')
 
         if isinstance(self.fields[field_tag], AccountRecord):
-            self.fields[field_tag] = AccountRecord(account, amount, side, self, None)
+            self.fields[field_tag] = AccountRecord(account, raw_amount, side, self, None)
         elif isinstance(self.fields[field_tag], list):
-            self.fields[field_tag].append(AccountRecord(account, amount, side, self, None))
+            self.fields[field_tag].append(AccountRecord(account, raw_amount, side, self, None))
 
     def get_debit(self):
         return self._get_side_sum(AccountSide.DEBIT)
@@ -265,18 +354,18 @@ class JournalEntry:
             if isinstance(field, AccountRecord):
                 if field.side != AccountSide.DEBIT and field.side != AccountSide.CREDIT:
                     raise ValueError('account side must be DEBIT or CREDIT')
-                if field.amount and not field.account:
+                if field.raw_amount and not field.account:
                     raise ValueError('entry with no account has non zero amount')
                 if field.side == side:
-                    result += field.amount
+                    result += field.raw_amount
             elif isinstance(field, list):
                 for account_entry in field:
                     if account_entry.side != AccountSide.DEBIT and account_entry.side != AccountSide.CREDIT:
                         raise ValueError('account side must be DEBIT or CREDIT')
-                    if account_entry.amount and not account_entry.account:
+                    if account_entry.raw_amount and not account_entry.account:
                         raise ValueError('entry with no account has non zero amount')
                     if account_entry.side == side:
-                        result += account_entry.amount
+                        result += account_entry.raw_amount
         return result
 
     def _get_currency(self):
@@ -288,50 +377,60 @@ class JournalEntry:
                     return account_entry.account.currency
         raise RuntimeError("currency not found")
 
+    def put_this(self):
+        ''' Insert this entry to the journal as "draft" journal entry '''
+        if self.journal is None:
+            raise ValueError('journal entry has no parent journal')
+        if self in self.journal.journal_entries:
+            raise ValueError('this journal entry is alraedy added to the journal')
+        self.journal.journal_entries.insert_right(self)
+
     def post_this(self):
-        ''' Post this journal entry to the ledger (single post - one-to-one) '''
+        ''' Post this journal entry to the ledger (single post) '''
         if not self.is_balanced():
             raise RuntimeError('not balanced journal entry')
         if self.journal is None:
             raise ValueError('journal entry has no parent journal')
+        if self not in self.journal.journal_entries:
+            self.put_this()
         self.journal.validate_new_journal_entry(self)
         self.journal.ledger.post_journal_entry(self.journal, self)
-        # self.journal.post_separate(self)
 
     def _set_posted(self, post):
         if not post:
             raise ValueError('post is None')
         for name, value in self.fields.items():
             if isinstance(value, AccountRecord):
-                if value.amount and value.account:
+                if value.raw_amount and value.account:
                         self.fields[name] = AccountRecord(
                             value.account,
-                            value.amount,
+                            value.raw_amount,
                             value.side,
                             value.journal_entry,
                             post
                             )
             elif isinstance(value, list):
                 for idx, account_entry in enumerate(value):
-                    if account_entry.amount and account_entry.account:
+                    if account_entry.raw_amount and account_entry.account:
                         value[idx] = AccountRecord(
                             account_entry.account,
-                            account_entry.amount,
+                            account_entry.raw_amount,
                             account_entry.side,
                             account_entry.journal_entry,
                             post
                             )
         self.post = post
 
+    def str_header(self):
+        return '-SID-  ---Date---  -Status-  -Description-'
+
     def __str__(self):
-        currency = self._get_currency()
-        post_info = 'not posted'
-        if self.post:
-            if self.post.summary_entry:
-                post_info = 'posted aggregated entries'
+        if self.post:   
+            status = '  POST  '
+        else:
+            if self.is_balanced():
+                status = '   NEW  '
             else:
-                post_info = 'posted single entry'
-        return ' '.join([
-            f"{str(self.date)}, {self.description}",
-            f"({self.journal.tag}, {post_info})"
-        ])
+                status = 'UNBALANC'
+        result = f'{SID().print_form(self.sid)}  {str.rjust(self.date, 10)}  {status}  "{self.description}"'
+        return result

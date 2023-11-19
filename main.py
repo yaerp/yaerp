@@ -1,18 +1,23 @@
+from copy import copy, deepcopy
 from decimal import Decimal
 import locale
 import operator
-from yaerp.accounting import AccountTypes, GeneralJournal, GeneralLedger
+import textwrap
+from accounting_system import AccountingSystem, setup_tiny_accounting_system
+from yaerp.accounting.lib import AccountTypes, GeneralJournal, GeneralLedger
 from yaerp.accounting.ledger import Ledger
 from yaerp.accounting.journal import Journal
 from yaerp.accounting.journal import JournalEntry
 from yaerp.accounting.account import Account
 from yaerp.accounting.account import AccountSide
 from yaerp.accounting.account import AccountRecord
+# from yaerp.accounting.lib import 
 from yaerp.accounting.marker import Assets, BalanceSheet, Clearing, Equity, Expenses, IncomeStatement, Liabilities, Revenues
 from yaerp.accounting.reports.t_account import T_account, render_journal_entries, render_journal_entries2, render_journal_entry, render_journal_entry2, render_layout
 from yaerp.model.money import Money
 from yaerp.model.currency import Currency
 from yaerp.report.typesetting.columns import simultaneous_column_generator as typeset
+from yaerp.tools.text import justify
 from yaerp.tools.sorted_collection import SortedCollection
 
 def run():
@@ -29,8 +34,8 @@ def run():
     # money = M(12300, c)
     # print(money)
 
-    ledger = Ledger('GL')
-    journal = Journal('General Journal', ledger)
+    ledger = Ledger('GL', 'General Ledger')
+    journal = Journal('GJ', 'General Journal', ledger)
     account100 = Account('100', ledger, currency, name='Cash')
     account200 = Account('200', ledger, currency, name='Sales')
     account300 = Account('300', ledger, currency, name='Sales Tax')
@@ -40,12 +45,12 @@ def run():
     account700 = Account('700', ledger, currency, name='Liabilities')
 
     class AdjustingJournal(Journal):
-        def define_fields(self, transaction):
+        def initialize_fields(self, transaction):
             return {
                 'Account': []
             }
 
-    adjusting_journal = AdjustingJournal('Adjusting Journal', ledger)
+    adjusting_journal = AdjustingJournal('CJ', 'Correction Journal', ledger)
 
     entry1 = JournalEntry(journal=adjusting_journal)
     # entry1.info('Date', '2022-12-30')
@@ -61,14 +66,14 @@ def run():
     # entry1.post_to_ledger()
 
     class SaleJournal(Journal):
-        def define_fields(self, transaction):
+        def initialize_fields(self, journal_entry):
             return {
-                'Cash': AccountRecord(account100, 0, AccountSide.DEBIT, transaction, None),
-                'Sale': AccountRecord(account200, 0, AccountSide.CREDIT, transaction, None),
-                'Tax': AccountRecord(None, 0, AccountSide.CREDIT, transaction, None)
+                'Cash': AccountRecord(account100, 0, AccountSide.DEBIT, journal_entry, None),
+                'Sale': AccountRecord(account200, 0, AccountSide.CREDIT, journal_entry, None),
+                'Tax': AccountRecord(None, 0, AccountSide.CREDIT, journal_entry, None)
             }
 
-    sale_journal = SaleJournal('Sale Journal', ledger)
+    sale_journal = SaleJournal('SJ', 'Sale Journal', ledger)
 
     entry2 = JournalEntry(journal=sale_journal)
     entry2.date = '2023-01-01'
@@ -171,7 +176,7 @@ def run():
     print(currency.raw2amount(raw_amount1), currency.raw2amount(raw_amount2), sep="   ")
 
 
-    money = Money(currency, 9)
+    money = Money(currency, amount=9)
 
     print('----------------------------')
     for account_entry in ledger.posts:
@@ -309,6 +314,65 @@ def run():
 
 
     # canvas = render_journal_entries([entry1, entry2, entry3, entry4, entry5, entry6], layout=render_layout['terminal-120-2'])
+
+    acc_sys = AccountingSystem()
+    for tag, journal in acc_sys.journals.items():
+        print(f"{tag}")
+
+    # print(acc_sys.get_oid(acc_sys))
+    # print(acc_sys.get_oid(acc_sys))
+
+    print(32*"=")
+    a = setup_tiny_accounting_system()
+    je = a.new_journal_entry("SJ")
+    je.date = "2023-02-02"
+    je.add_record('Cash', 1000)
+    je.add_record("Sale", 900)
+    je.add_record("Tax", 100)
+    je.put_this()
+    if je.is_ready_to_post():
+        je.post_this()
+    # print(a.get_oid(je))
+    je = a.new_journal_entry("SJ")
+    je.date = "2023-02-03"
+    je.add_record('Cash', 30000003)
+    je.add_record("Sale", 27000002)
+    je.add_record("Tax", 3000001)
+    print(je)
+    je.post_this()
+    je = a.new_journal_entry("PJ")
+    je.date = "2023-02-03"
+    je.add_record('Cash', 6000000000)
+    je.add_record("Payables", 6000000000)
+    je.post_this()
+    acc = a.get_account("110")
+    print(acc.tag, end='/')
+    print(acc.guid, end='/')
+    print()
+    # for key, value in a.
+    #     print(f"{key}: {value}")
+    print(acc.header_str())
+    print(acc)
+    print()
+    print(acc.records_header_str())
+    for ae in acc.posted_records:
+        print(ae)
+    
+    print(str(dir(je)))
+
+    je2 = copy(je)
+    print(str(dir(je2)))
+
+    je3 = deepcopy(je)
+    print(str(dir(je3)))
+
+#     text = (
+# '''wer wrrtert er t e  e ert e erte er te y rfghfgh fgh fg hfh fg hfg hf hgh fg hf hf hfgh fg hf ghfgh f hf  fgh fg hf hfg f'''
+# ''''''
+#     )
+
+#     for line in fullJustify(text, width=23):
+#         print(line)
 
 if __name__ == "__main__":
     run()

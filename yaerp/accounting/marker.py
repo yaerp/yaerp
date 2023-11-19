@@ -130,7 +130,7 @@ class PropertyContainer:
     #     return len(self._markers.values()) == len(set(other._markers.values()).intersection(other))
 
 
-class BalanceSheet(Enum):
+class BalanceSheet(Mark):
     """ Marker for Balance Sheet accounts """
     ASSETS = 1
     LIABILITIES = 2
@@ -222,7 +222,7 @@ class Clearing(Mark):
     - 7. the clearing a/c is balanced and the project should be ready
     '''
     
-    PURCHASE_CLEARING_ACCOUNT = 970  # rozliczenie zakupu
+    PURCHASE_CLEARING_ACCOUNT = 973  # rozliczenie zakupu
     ''' "Purchase Clearing Account" (Goods Recipt/Invoice Recipt)
     - goods that are not yet invoiced have been received from the supplier
             - (increases Liability on Clearing Account)
@@ -236,7 +236,7 @@ class Clearing(Mark):
       - payment sent:
             - Dr( supplier a/c ) Cr( bank a/c ) '''
     
-    SALES_CLEARING_ACCOUNT = 971  # rozliczenie sprzedazy
+    SALES_CLEARING_ACCOUNT = 974  # rozliczenie sprzedazy
     ''' "Sales Clearing Account"
     - goods that are not yet invoiced have been shipped to the customer
             - (increases Asset on Clearing Account)

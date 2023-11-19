@@ -240,7 +240,7 @@ def render_journal_entry2(journal_entry: JournalEntry, layout):
     accounts_entries = []
     for field in journal_entry.fields.values():
         if isinstance(field, AccountRecord):
-            if field.account and field.amount:
+            if field.account and field.raw_amount:
                 accounts_engaged.append(field.account)
                 accounts_entries.append(field)
         elif isinstance(field, list):
@@ -301,12 +301,12 @@ def render_journal_entries2(journal_entry_list, layout=None):
         # find engaged accounts
         for field in journal_entry.fields.values():
             if isinstance(field, AccountRecord):
-                if field.account and field.amount:
+                if field.account and field.raw_amount:
                     accounts_engaged.append(field.account)
                     accounts_entries.append(field)
             elif isinstance(field, list):
                 for account_entry in field:
-                    if account_entry.account and account_entry.amount:
+                    if account_entry.account and account_entry.raw_amount:
                         accounts_engaged.append(account_entry.account)
                         accounts_entries.append(account_entry)
     # remove recurring accounts
@@ -424,7 +424,7 @@ def t_form_gen2(account, account_entry_list, layout=None, entry_counter=None):
         # post_info = account_entry.get_info()        
         # description = f'({entry_counter[post.entry]}.{post_info[1]})'
         description = f'({entry_counter[account_entry.journal_entry]})'
-        yield from t_account.row_generator(description, currency.raw2amount(account_entry.amount), account_entry.side)
+        yield from t_account.row_generator(description, currency.raw2amount(account_entry.raw_amount), account_entry.side)
 
 def vertical_space_gen(col_len):
     yield blank_row(col_len)
