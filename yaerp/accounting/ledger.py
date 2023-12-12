@@ -88,7 +88,7 @@ class Ledger:
         if account_record.raw_amount and not account_record.account:
             raise ValueError('account entry has no parent account')
         if account_record.account and account_record.account not in self.accounts.values():
-            raise ValueError('account entry has parent account associated with an another ledger')
+            raise ValueError(f'account entry has parent account associated with an another ledger. [J/E {account_record.journal_entry.sid}]')
         # if entry.transaction is None:
         #     raise ValueError('parent transaction is None')
         # if entry.transaction.journal is None:
@@ -98,7 +98,7 @@ class Ledger:
         # if entry.transaction.journal not in self.journals.values():
             # raise ValueError('parent journal not associated whith this ledger') 
         if account_record in self.posts:
-            raise ValueError('this account entry already exist in the ledger')
+            raise ValueError(f'Account entry already exist in the ledger. [J/E {account_record.journal_entry.sid}]')
 
     def __append_account_record(self, account_record):
         self.posts.insert_right(account_record)

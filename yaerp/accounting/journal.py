@@ -4,6 +4,7 @@ from uuid import uuid4
 from yaerp.accounting.account import AccountRecord, AccountSide
 from yaerp.tools.sid import SID
 from yaerp.tools.sorted_collection import SortedCollection
+from yaerp.tools.text import shortify
 
 
 class Journal:
@@ -179,17 +180,17 @@ class Journal:
 
     def validate_new_journal_entry(self, journal_entry):
         if journal_entry.journal and self != journal_entry.journal:
-            raise ValueError('the specified entry is binded to another journal')
+            raise ValueError(f'journal entry {journal_entry.sid} is binded to another journal')
         # if journal_entry in self.journal_entries:
         #     raise ValueError('the specified entry already exist in the journal')
         if not journal_entry.date:
-            raise ValueError('the specified entry has empty date')
+            raise ValueError(f'journal entry {journal_entry.sid} has empty date')
         for field in journal_entry.fields.values():
             if isinstance(field, AccountRecord):
                 if not field.journal_entry:
                     raise ValueError('account record has no journal entry')
                 if field.journal_entry != journal_entry:
-                    raise ValueError('account record has invalid journal entry')
+                    raise ValueError(f'account record has invalid parent journal entry (current={field.journal_entry.sid}, expected={field.journal_entry})')
 
     def __str__(self) -> str:
         return self.tag
@@ -289,12 +290,12 @@ class JournalEntry:
     def debit(self, field_tag: str, raw_amount: int, account):
         ''' Add a Debit Record '''
         # self.flow(field_tag, account, amount, AccountSide.DEBIT)
-        self.add_record(field_tag, raw_amount, account=account, side=AccountSide.DEBIT)
+        self.add_record(field_tag, raw_amount, account=account, side=AccountSide.Dr)
 
     def credit(self, field_tag: str, raw_amount: int, account):
         ''' Add a Credit Record '''
         # self.flow(field_tag, account, amount, AccountSide.CREDIT)
-        self.add_record(field_tag, raw_amount, account=account, side=AccountSide.CREDIT)
+        self.add_record(field_tag, raw_amount, account=account, side=AccountSide.Cr)
 
     # def flow(self, field_tag: str, amount: int, account, side: AccountSide):
     #     ''' Add a Debit/Credit '''
@@ -343,16 +344,16 @@ class JournalEntry:
             self.fields[field_tag].append(AccountRecord(account, raw_amount, side, self, None))
 
     def get_debit(self):
-        return self._get_side_sum(AccountSide.DEBIT)
+        return self._get_side_sum(AccountSide.Dr)
 
     def get_credit(self):
-        return self._get_side_sum(AccountSide.CREDIT)
+        return self._get_side_sum(AccountSide.Cr)
 
     def _get_side_sum(self, side):
         result = 0
         for field in self.fields.values():
             if isinstance(field, AccountRecord):
-                if field.side != AccountSide.DEBIT and field.side != AccountSide.CREDIT:
+                if field.side != AccountSide.Dr and field.side != AccountSide.Cr:
                     raise ValueError('account side must be DEBIT or CREDIT')
                 if field.raw_amount and not field.account:
                     raise ValueError('entry with no account has non zero amount')
@@ -360,7 +361,7 @@ class JournalEntry:
                     result += field.raw_amount
             elif isinstance(field, list):
                 for account_entry in field:
-                    if account_entry.side != AccountSide.DEBIT and account_entry.side != AccountSide.CREDIT:
+                    if account_entry.side != AccountSide.Dr and account_entry.side != AccountSide.Cr:
                         raise ValueError('account side must be DEBIT or CREDIT')
                     if account_entry.raw_amount and not account_entry.account:
                         raise ValueError('entry with no account has non zero amount')
@@ -385,16 +386,35 @@ class JournalEntry:
             raise ValueError('this journal entry is alraedy added to the journal')
         self.journal.journal_entries.insert_right(self)
 
+    def can_post_this(self, use_exceptions=True):
+        ''' Check possibility to post this journal entry to the ledger. '''
+        if not self.is_balanced():
+            if use_exceptions:
+                raise RuntimeError(f'not balanced journal entry {self.sid}')
+            return False
+        if self.journal is None:
+            if use_exceptions:
+                raise ValueError(f'journal entry has no parent journal {self.sid}')
+            return False
+        try:
+            self.journal.validate_new_journal_entry(self)  
+        except:
+            if use_exceptions:
+                raise
+            return False
+        return True
+    
     def post_this(self):
         ''' Post this journal entry to the ledger (single post) '''
-        if not self.is_balanced():
-            raise RuntimeError('not balanced journal entry')
-        if self.journal is None:
-            raise ValueError('journal entry has no parent journal')
-        if self not in self.journal.journal_entries:
-            self.put_this()
-        self.journal.validate_new_journal_entry(self)
-        self.journal.ledger.post_journal_entry(self.journal, self)
+        # if not self.is_balanced():
+        #     raise RuntimeError('not balanced journal entry')
+        # if self.journal is None:
+        #     raise ValueError('journal entry has no parent journal')
+        # if self not in self.journal.journal_entries:
+        #     self.put_this()
+        # self.journal.validate_new_journal_entry(self)
+        if self.can_post_this(self):
+            self.journal.ledger.post_journal_entry(self.journal, self)
 
     def _set_posted(self, post):
         if not post:
@@ -421,16 +441,55 @@ class JournalEntry:
                             )
         self.post = post
 
-    def str_header(self):
-        return '-SID-  ---Date---  -Status-  -Description-'
+    def str_header():
+        return '-SID-  ---Date---  --Status--  -Description-'
 
     def __str__(self):
         if self.post:   
-            status = '  POST  '
+            status = '   POSTED  '
         else:
             if self.is_balanced():
-                status = '   NEW  '
+                status = '    NEW   '
             else:
-                status = 'UNBALANC'
+                status = 'UNBALANCED'
         result = f'{SID().print_form(self.sid)}  {str.rjust(self.date, 10)}  {status}  "{self.description}"'
         return result
+    
+    def full_str(self):
+        txt = []
+        if self.post:   
+            status = 'POSTED'
+        else:
+            if self.is_balanced():
+                status = 'DRAFT'
+            else:
+                status = 'UNBALANCED'
+        je_caption = f'"{self.journal.tag}" J/E {self.sid:04} ({status})'
+        txt.append(f'----------------------------------------------------------------------------\n')
+        txt.append(f'{self.date:<33}  {shortify(self.description, 41):>41}')
+        txt.append('\n')
+        txt.append(f' {je_caption:^39} +---------------------------------+\n')
+        txt.append(f' {shortify("ref:" + self.reference if self.reference else "", 39):^39} | {"Dr":^14} | {"Cr":^14} |\n')
+        txt.append(f'+========================================|================|================|\n')
+        for field_name, field_value in self.fields.items():
+            if isinstance(field_value, AccountRecord):
+                amount = field_value.account.currency.raw2amount(field_value.raw_amount)
+                if field_value.side == AccountSide.Dr:
+                    txt.append(f'| {shortify(field_name, 26):<26}           | {amount:>14} | {14*" "} |')
+                elif field_value.side == AccountSide.Cr:
+                    txt.append(f'|          {shortify(field_name, 26):<26}  | {14*" "} | {amount:>14} |')
+                txt.append('\n')
+            elif isinstance(field_value, list):
+                for acc_record in field_value:
+                    amount = acc_record.account.currency.raw2amount(acc_record.raw_amount)
+                    if acc_record.side == AccountSide.Dr:
+                        txt.append(f'| {"/"+acc_record.account.tag+"/":<11} {shortify(acc_record.account.name, 26):<26} | {amount:>14} | {14*" "} |')
+                    elif acc_record.side == AccountSide.Cr:
+                        txt.append(f'| {"/"+acc_record.account.tag+"/":<11} {shortify(acc_record.account.name, 26):<26} | {14*" "} | {amount:>14} |')
+                    txt.append('\n')
+            else:
+                txt.append(f'| {field_name}: {field_value}\n')
+                txt.append('\n')
+
+        txt.append(f'+----------------------------------------+----------------+----------------+\n')
+        return ''.join(txt)

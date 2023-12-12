@@ -24,8 +24,8 @@ class Currency(Metric):
 
     def raw2amount(self, raw_int_value, new_fraction_char=None, ommit_zero_fraction=False, new_group_separator_char=None, new_separator_positions=None, new_separator_predicate=None):
         ''' Convert raw integer value to the actual amount '''
-        if raw_int_value is not int:
-            ValueError('input argument must be integer')
+        # if not isinstance(raw_int_value, int):
+        #     ValueError('input argument must be integer')
         result = str(raw_int_value)
         zero_fraction = bool(raw_int_value % self.ratio_of_subunits_to_unit) == 0
         sign = ''

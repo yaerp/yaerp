@@ -61,16 +61,16 @@ def run():
     entry1.credit('Account', currency.amount2raw(1897.20), account200)
     # entry1.debit('Account', account100, currency.amount2raw(-897.20))
     # entry1.credit('Account', account200, currency.amount2raw(-897.20))
-    entry1.add_record("Account", currency.amount2raw(-897.20), account=account100, side=AccountSide.DEBIT)
-    entry1.add_record("Account", currency.amount2raw(-897.20), account=account200, side=AccountSide.CREDIT)
+    entry1.add_record("Account", currency.amount2raw(-897.20), account=account100, side=AccountSide.Dr)
+    entry1.add_record("Account", currency.amount2raw(-897.20), account=account200, side=AccountSide.Cr)
     # entry1.post_to_ledger()
 
     class SaleJournal(Journal):
         def initialize_fields(self, journal_entry):
             return {
-                'Cash': AccountRecord(account100, 0, AccountSide.DEBIT, journal_entry, None),
-                'Sale': AccountRecord(account200, 0, AccountSide.CREDIT, journal_entry, None),
-                'Tax': AccountRecord(None, 0, AccountSide.CREDIT, journal_entry, None)
+                'Cash': AccountRecord(account100, 0, AccountSide.Dr, journal_entry, None),
+                'Sale': AccountRecord(account200, 0, AccountSide.Cr, journal_entry, None),
+                'Tax': AccountRecord(None, 0, AccountSide.Cr, journal_entry, None)
             }
 
     sale_journal = SaleJournal('SJ', 'Sale Journal', ledger)

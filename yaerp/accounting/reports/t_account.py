@@ -149,27 +149,27 @@ class T_account:
 
     def row(self, description, amount, side):
         result = self.leading_space
-        if side == AccountSide.DEBIT:
-            result += self.single_side_text(AccountSide.DEBIT, description, amount)
+        if side == AccountSide.Dr:
+            result += self.single_side_text(AccountSide.Dr, description, amount)
             result += self.box['|']
             result += ' ' * self.side_length
-        elif side == AccountSide.CREDIT:
+        elif side == AccountSide.Cr:
             result += ' ' * self.side_length
             result += self.box['|']
-            result += self.single_side_text(AccountSide.CREDIT, description, amount)
+            result += self.single_side_text(AccountSide.Cr, description, amount)
         result += self.new_line
         return result
 
     def row_generator(self, description, amount, side):
         result = self.leading_space
-        if side == AccountSide.DEBIT:
-            result += self.single_side_text(AccountSide.DEBIT, description, amount)
+        if side == AccountSide.Dr:
+            result += self.single_side_text(AccountSide.Dr, description, amount)
             result += self.box['|']
             result += ' ' * self.side_length
-        elif side == AccountSide.CREDIT:
+        elif side == AccountSide.Cr:
             result += ' ' * self.side_length
             result += self.box['|']
-            result += self.single_side_text(AccountSide.CREDIT, description, amount)
+            result += self.single_side_text(AccountSide.Cr, description, amount)
         result += self.new_line
         yield result
 
@@ -222,10 +222,10 @@ class T_account:
     def single_side_text(self, side, description, amount):
         max_desc_length = self.side_length - self.max_amount_length - 1
         description = self.truncate(description, max_desc_length)
-        if side == AccountSide.DEBIT:
+        if side == AccountSide.Dr:
             side_formatter = '{:<' + str(max_desc_length) + '} {:>' + str(self.max_amount_length) + '}'
             return side_formatter.format(description, amount)
-        elif side == AccountSide.CREDIT:
+        elif side == AccountSide.Cr:
             side_formatter = '{:<' + str(self.max_amount_length) + '} {:>' + str(max_desc_length) + '}'
             return side_formatter.format(amount, description)
 

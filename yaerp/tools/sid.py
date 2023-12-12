@@ -1,6 +1,5 @@
 from yaerp.tools.singleton import Singleton
 
-
 class SIDCounter:
     _sid = 0
 

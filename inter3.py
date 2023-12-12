@@ -1,4 +1,8 @@
 import argparse
+from datetime import datetime
+from hashlib import blake2s
+from dateutil.tz import *
+from dateutil.relativedelta import *
 from itertools import repeat
 import cmd2
 from cmd2 import CommandSet, CompletionMode, with_argparser, with_category, with_default_category, ansi
@@ -6,9 +10,19 @@ from accounting_system import AccountingSystem, setup_tiny_accounting_system as 
 from yaerp.accounting.account import AccountRecord, AccountSide
 from yaerp.accounting.journal import Journal, JournalEntry
 from yaerp.accounting.tree import AccountTree
+from yaerp.tools.file import append_file
 from yaerp.tools.sid import SID
+from yaerp.tools.text import dict_to_str, iter_to_str
 
 accounting_system = None
+sec_token = ''
+
+def update_sec_token(command_args):
+    h = blake2s(digest_size=8)
+    h.update(globals()["sec_token"].encode())
+    for arg in command_args:
+        h.update(arg.encode())
+    return h.hexdigest()
 
 prompt_part_1 = ""
 prompt_part_2 = ""
@@ -237,15 +251,16 @@ class LoadableEntries(CommandSet):
     def puts_journal_entry(self, je: JournalEntry):
 
         def puts_side(side):
-            if side == AccountSide.DEBIT:
+            if side == AccountSide.Dr:
                 self._cmd.poutput("  ", end='')
-            elif side == AccountSide.CREDIT:
+            elif side == AccountSide.Cr:
                 self._cmd.poutput("      ", end='')
             else:
                 raise ValueError()
 
         sid_str = str(je.sid)
         self._cmd.poutput(f'{je.date}  ({je.journal.tag}:{sid_str})  "{je.description}"', end='')
+        # self._cmd.poutput(je.str_header())
         if je.reference:
             self._cmd.poutput(f'  [{je.reference}]', end='')
         if je.post:
@@ -263,103 +278,345 @@ class LoadableEntries(CommandSet):
                     puts_side(record.side)
                     self._cmd.poutput(f'  "{record.account.name}"  {record.account.currency.raw2amount(record.raw_amount)}')
 
-    @cmd2.as_subcommand_to('create', 'entry', create_entry_parser)
-    def create_entry(self, ns: argparse.Namespace):
-        journal_tag = accounting_system.selected["journal"]
-        journal_entry = accounting_system.new_journal_entry(journal_tag)
-        if ns.entry_date:
-            journal_entry.date = ns.entry_date
-        else:
-            journal_entry.date = accounting_system.get_active_date()
-        journal_entry.description = ns.entry_description
-        journal_entry.reference = ns.reference
+    # @cmd2.as_subcommand_to('create', 'entry', create_entry_parser)
+    # def create_entry(self, ns: argparse.Namespace):
+    #     journal_tag = accounting_system.selected["journal"]
+    #     journal_entry = accounting_system.new_journal_entry(journal_tag)
+    #     if ns.entry_date:
+    #         journal_entry.date = ns.entry_date
+    #     else:
+    #         journal_entry.date = accounting_system.get_active_date()
+    #     journal_entry.description = ns.entry_description
+    #     journal_entry.reference = ns.reference
 
-        account_text = None
-        side_text = None
-        amount_text = None
+    #     account_text = None
+    #     side_text = None
+    #     amount_text = None
 
-        account = None
-        side = None
-        amount = None
+    #     account = None
+    #     side = None
+    #     amount = None
 
-        for key, value in journal_entry.fields.items():
-            # input_text = self._cmd.read_input(f'{key} <<< ')
-            # self._cmd.poutput(f'{key}={input_text}')
-            if value is None:
-                '''Get info '''
-                input_text = self._cmd.read_input(f'"{key}" info field: ')
-                journal_entry.add_info(key, input_text)
-            elif isinstance(value, AccountRecord):
-                ''' Get account field (specific) '''
-                if not value.account:
-                    if not value.side:
-                        account_req_mesg = f'"{key}": Account to impact: '
-                    else:
-                        if value.side == AccountSide.DEBIT:
-                            account_req_mesg = f'"{key}" Dr Account to impact: '
-                        else:
-                            account_req_mesg = f'"{key}" Cr Account to impact: '
-                side_req_mesg = f'"{key}": Account Side: '
-                if not value.side:
-                    amount_req_mesg = f'"{key}": Amount: '
+    #     for key, value in journal_entry.fields.items():
+    #         # input_text = self._cmd.read_input(f'{key} <<< ')
+    #         # self._cmd.poutput(f'{key}={input_text}')
+    #         if value is None:
+    #             '''Get info '''
+    #             input_text = self._cmd.read_input(f'"{key}" info field: ')
+    #             journal_entry.add_info(key, input_text)
+    #         elif isinstance(value, AccountRecord):
+    #             ''' Get account field (specific) '''
+    #             if not value.account:
+    #                 if not value.side:
+    #                     account_req_mesg = f'"{key}": Account to impact: '
+    #                 else:
+    #                     if value.side == AccountSide.DEBIT:
+    #                         account_req_mesg = f'"{key}" Dr Account to impact: '
+    #                     else:
+    #                         account_req_mesg = f'"{key}" Cr Account to impact: '
+    #             side_req_mesg = f'"{key}": Account Side: '
+    #             if not value.side:
+    #                 amount_req_mesg = f'"{key}": Amount: '
+    #             else:
+    #                 if value.side == AccountSide.DEBIT:
+    #                     amount_req_mesg = f'"{key}" Dr Amount: '
+    #                 else:
+    #                     amount_req_mesg = f'"{key}" Cr Amount: '
+    #             if not value.account:
+    #                 # account_tag = self._cmd.read_input(f'"{key}" field: Account to impact: ')
+    #                 account_tag = self._cmd.read_input(account_req_mesg)
+    #                 if not account_tag:
+    #                     self._cmd.poutput(f'  Interrupted')
+    #                     return
+    #                 account = accounting_system.get_account(account_tag)
+    #             if not value.side:
+    #                 # side_text = self._cmd.read_input(f'"{key}" field: Account Side: ', completion_mode=CompletionMode.CUSTOM , choices=['Dr', 'Cr'])
+    #                 side_text = self._cmd.read_input(side_req_mesg, completion_mode=CompletionMode.CUSTOM , choices=['Dr', 'Cr'])
+    #                 if not side_text:
+    #                     self._cmd.poutput(f'  Interrupted')
+    #                     return
+    #                 if side_text == "Dr":
+    #                     side = AccountSide.DEBIT
+    #                 elif side_text == "Cr":
+    #                     side = AccountSide.CREDIT
+    #                 else:
+    #                     ValueError("Incorrect account side argument. Expecting: 'Dr' or 'Cr'")
+    #             # input_prompt = f'"{key}" field: Amount: '
+    #             # amount_text = self._cmd.read_input(input_prompt)
+    #             amount_text = self._cmd.read_input(amount_req_mesg)
+    #             if not amount_text:
+    #                 self._cmd.poutput(f'  Interrupted')
+    #                 return
+    #             amount = int(amount_text)
+    #             journal_entry.add_record(key, amount, account=account, side=side)
+    #         elif isinstance(value, list):
+    #             ''' Get account field (unspecified) '''
+    #             self._cmd.poutput(f'MANUAL ACCOUNT ENTRIES')
+    #             for number, _ in enumerate(repeat(True), 1):
+    #                 self._cmd.poutput(f' {str.rjust(str(number), 2)}. {key} Entry:')
+    #                 account_text = self._cmd.read_input(f'      Name/Tag = ')
+    #                 side_text = self._cmd.read_input(f'      Side = ', completion_mode=CompletionMode.CUSTOM , choices=['Dr', 'Cr'])
+    #                 amount_text = self._cmd.read_input(f'      Amount = ', )
+    #                 if not account_text and not side_text and not amount_text:
+    #                     break
+    #                 account = accounting_system.get_account(account_text)
+    #                 if side_text == "Dr":
+    #                     side = AccountSide.DEBIT
+    #                 elif side_text == "Cr":
+    #                     side = AccountSide.CREDIT
+    #                 else:
+    #                     ValueError("Incorrect account side argument. Expecting: 'Dr' or 'Cr'")
+    #                 raw_amount = account.currency.amount2raw(amount_text)                    
+    #                 journal_entry.add_record(key, raw_amount, account=account, side=side)
+    #         else:
+    #             ValueError(f"Incorrect type of {key} field")
+    #     accounting_system.add_journal_entry(journal_entry)
+    #     head = f'------ New {journal_tag} entry ------'
+    #     self._cmd.poutput(head)
+    #     self.puts_journal_entry(journal_entry)
+    #     self._cmd.poutput('-' * len(head))
+
+
+
+    create2_entry_parser = cmd2.Cmd2ArgumentParser()
+    create2_entry_parser.add_argument('journal', help="Journal tag")
+    create2_entry_parser.add_argument('date', help="Local date and (optional) time in form 'RRRR-MM-DD hh:mm:ss' (i.e 2023-11-23 11:57:24) or one of the following phrases:\n    'now', 'today', 'prev_month_last_day', 'this_month_last_day', 'next_month_last_day'")
+    create2_entry_parser.add_argument('description', help='transaction description, i.e "Purchase of materials"') 
+    create2_entry_parser.add_argument('-ref', '--reference', default=None)
+    create2_entry_parser.add_argument('-token', '--token', default=None, help="Secure token to seal commands stored in script. ")
+    create2_entry_parser.add_argument('fields', nargs=(2,), help='debit/credit entry or info data in order of apperance in the journal. One of the following formats "Amount" (i.e 100.00) or "Account/Amount" (i.e 450/100.00) or "Side/Account/Amount" (i.e Dr/450/100.00) or "Some text" (for info fields)')
+
+    def fill_entry_fields(self, journal_entry: JournalEntry, field_data_list):
+        def parse_field_data(field_str: str) -> tuple:
+            if not field_str:
+                raise ValueError()
+            tmp = field_str.split('/', maxsplit=3)
+            tmp_len = len(tmp)
+            side = None
+            account = None
+            amount_text = ""
+            if tmp_len == 1:
+                amount_text = tmp[0]
+            elif tmp_len == 2:
+                if tmp[0]:
+                    account = accounting_system.get_account(tmp[0])
+                amount_text = tmp[1]
+            elif tmp_len == 3:
+                if tmp[0].lower() in ("dr", "dt", "debit", "wn", "winien"):
+                    side = AccountSide.Dr
+                if tmp[0].lower() in ("cr", "ct", "credit", "ma"):
+                    side = AccountSide.Cr
+                if tmp[1]:
+                    account = accounting_system.get_account(tmp[1])
+                amount_text = tmp[2]
+            return (side, account, amount_text)
+
+        def autobalance(journal_entry, balancing_side) -> int:
+            if not journal_entry.is_zeroed() and not journal_entry.is_balanced():
+                balance = journal_entry.get_debit() - journal_entry.get_credit()
+                self._cmd.poutput(f'Autobalance')
+                if balance > 0 and balancing_side == AccountSide.Cr:
+                    result_raw_amount = balance
+                elif balance < 0 and balancing_side == AccountSide.Dr:
+                    result_raw_amount = -balance
                 else:
-                    if value.side == AccountSide.DEBIT:
-                        amount_req_mesg = f'"{key}" Dr Amount: '
-                    else:
-                        amount_req_mesg = f'"{key}" Cr Amount: '
-                if not value.account:
-                    # account_tag = self._cmd.read_input(f'"{key}" field: Account to impact: ')
-                    account_tag = self._cmd.read_input(account_req_mesg)
-                    if not account_tag:
-                        self._cmd.poutput(f'  Interrupted')
-                        return
-                    account = accounting_system.get_account(account_tag)
-                if not value.side:
-                    # side_text = self._cmd.read_input(f'"{key}" field: Account Side: ', completion_mode=CompletionMode.CUSTOM , choices=['Dr', 'Cr'])
-                    side_text = self._cmd.read_input(side_req_mesg, completion_mode=CompletionMode.CUSTOM , choices=['Dr', 'Cr'])
-                    if not side_text:
-                        self._cmd.poutput(f'  Interrupted')
-                        return
-                    if side_text == "Dr":
-                        side = AccountSide.DEBIT
-                    elif side_text == "Cr":
-                        side = AccountSide.CREDIT
-                    else:
-                        ValueError("Incorrect account side argument. Expecting: 'Dr' or 'Cr'")
-                # input_prompt = f'"{key}" field: Amount: '
-                # amount_text = self._cmd.read_input(input_prompt)
-                amount_text = self._cmd.read_input(amount_req_mesg)
-                if not amount_text:
-                    self._cmd.poutput(f'  Interrupted')
-                    return
-                amount = int(amount_text)
-                journal_entry.add_record(key, amount, account=account, side=side)
-            elif isinstance(value, list):
-                ''' Get account field (unspecified) '''
-                self._cmd.poutput(f'MANUAL ACCOUNT ENTRIES')
-                for number, _ in enumerate(repeat(True), 1):
-                    self._cmd.poutput(f' {str.rjust(str(number), 2)}. {key} Entry:')
-                    account_text = self._cmd.read_input(f'      Name/Tag = ')
-                    side_text = self._cmd.read_input(f'      Side = ', completion_mode=CompletionMode.CUSTOM , choices=['Dr', 'Cr'])
-                    amount_text = self._cmd.read_input(f'      Amount = ', )
-                    if not account_text and not side_text and not amount_text:
-                        break
-                    account = accounting_system.get_account(account_text)
-                    if side_text == "Dr":
-                        side = AccountSide.DEBIT
-                    elif side_text == "Cr":
-                        side = AccountSide.CREDIT
-                    else:
-                        ValueError("Incorrect account side argument. Expecting: 'Dr' or 'Cr'")
-                    raw_amount = account.currency.amount2raw(amount_text)                    
-                    journal_entry.add_record(key, raw_amount, account=account, side=side)
+                    raise ValueError(f'"{balancing_side}" record cannot auto-balance this journal entry. Use "{balancing_side.opposite()}"')
             else:
-                ValueError(f"Incorrect type of {key} field")
+                result_raw_amount = 0
+            return result_raw_amount
+
+        def autobalance2(journal_entry) -> (AccountSide, int):
+            if not journal_entry.is_zeroed() and not journal_entry.is_balanced():
+                balance = journal_entry.get_debit() - journal_entry.get_credit()
+                # self._cmd.poutput(f'Autobalance2')
+                if balance > 0:
+                    return (AccountSide.Cr, balance)
+                if balance < 0:
+                    return (AccountSide.Dr, -balance)
+            else:
+                return (None, 0)
+
+        field_arg_counter = len(field_data_list)
+
+        for index, field_name in enumerate(journal_entry.fields.keys()):
+            if index == field_arg_counter:
+                break
+            if journal_entry.fields[field_name] is None:
+                '''Info field '''
+                # self._cmd.poutput(f'{index}: "{field_name}" info field: "{field_data_list[index]}"')
+                journal_entry.add_info(field_name, field_data_list[index])
+            elif isinstance(journal_entry.fields[field_name], AccountRecord):
+                '''Single (and bounded) AccountEntry'''
+                # self._cmd.poutput(f'{index}: "{field_name}" bounded account record field: "{field_data_list[index]}"')
+                default_side = journal_entry.fields[field_name].side
+                default_account = journal_entry.fields[field_name].account
+                arg_side, arg_account, amount_text = parse_field_data(field_data_list[index])
+
+                if arg_account:
+                    ''' is arg_account match to default account'''
+                    if default_account and False:
+                        raise ValueError()
+                else:
+                    if default_account:
+                        arg_account = default_account  
+                    else:
+                        raise ValueError()
+                    
+                if arg_side:
+                    ''' is arg_side match to default account side'''
+                    if default_side and arg_side != default_side:
+                        raise ValueError(f'Journal "{journal_entry.journal.tag}", field "{field_name}" -> default account side defined; expects empty "/../.." or "{default_side}/../.." instead of: {field_data_list[index]}')
+                else:
+                    if default_side:
+                        arg_side = default_side
+                    # else:
+                    #     raise ValueError(f'Journal "{journal_entry.journal.tag}", field "{field_name}" -> no default account side defined; expects "{AccountSide.Dr}/../.." or "{AccountSide.Cr}/../.." (debit or credit) instead of: {field_data_list[index]}')
+
+                if not amount_text or amount_text == '*':
+                    ''' If no amount provided - try to auto-balance the journal entry '''
+                    ctrl_side, arg_raw_amount = autobalance2(journal_entry)
+                    if arg_side:
+                        if arg_side != ctrl_side:
+                            raise ValueError(f'"{arg_side}" record cannot auto-balance this journal entry. It shoul be "{ctrl_side}" instead.')
+                    else:
+                        arg_side = ctrl_side
+                else:
+                    arg_raw_amount = arg_account.currency.amount2raw(amount_text)
+                journal_entry.add_record(field_name, arg_raw_amount, 
+                                         account=arg_account, side=arg_side)
+            elif isinstance(journal_entry.fields[field_name], list):
+                '''List of free AccountEntries. Reading until the end'''
+                # self._cmd.poutput(f'Free account records expected from: "{field_data_list[index]}" until the end.')
+                
+                for uindex in range(index, field_arg_counter):
+                    # self._cmd.poutput(f'{uindex}:Free account record: "{field_data_list[uindex]}"')
+                    arg_side, arg_account, amount_text = parse_field_data(field_data_list[uindex])
+
+                    if not arg_account:
+                        raise ValueError(f'Incorrect account record: "{field_data_list[uindex]}". Expecting "../AccTag/.." (account tag).')
+
+                    if not amount_text or amount_text == '*':
+                        ''' If no amount provided - try to balance the journal entry '''
+                        ctrl_side, arg_raw_amount = autobalance2(journal_entry)
+                        if arg_side:
+                            if arg_side != ctrl_side:
+                                raise ValueError(f'"{arg_side}" record cannot auto-balance this journal entry. It shoul be "{ctrl_side}" instead.')
+                        else:
+                            arg_side = ctrl_side
+                    else:
+                        arg_raw_amount = arg_account.currency.amount2raw(amount_text)
+
+                    if not arg_side:
+                        raise ValueError(f'Cannot determine account side for provided argument "{field_data_list[uindex]}". Expecting "{AccountSide.Dr}/../.." or "{AccountSide.Cr}/../.." (debit or credit).')
+
+                    journal_entry.add_record(field_name, arg_raw_amount, 
+                                         account=arg_account, side=arg_side)
+                # self._cmd.poutput(f'{uindex}:End of free account records.')
+                return
+
+    def get_datetime_str(self, input: str):
+        if not input:
+            raise ValueError
+        input = input.lower().strip()
+        if input == '*':
+            input = accounting_system.get_active_date()
+        tz = tzlocal()
+        moment = datetime.now(tz=tz)
+        match(input):
+            case 'now':
+                pass
+            case 'today':
+                moment = datetime(year=moment.year, month=moment.month, day=moment.day, tzinfo=tz)
+            case 'first_day_prev_month':
+                moment = datetime(year=moment.year, month=moment.month, day=1, tzinfo=tz)
+                moment = moment + relativedelta(month=-1)
+            case 'last_day_prev_month':
+                moment = datetime(year=moment.year, month=moment.month, day=1, tzinfo=tz)
+                moment = moment + relativedelta(days=-1)
+            case 'first_day_this_month':
+                moment = datetime(year=moment.year, month=moment.month, day=1, tzinfo=tz)
+            case 'last_day_this_month':
+                moment = datetime(year=moment.year, month=moment.month, day=1, tzinfo=tz)
+                moment = moment + relativedelta(month=+1, days=-1)
+            case 'first_day_next_month':
+                moment = datetime(year=moment.year, month=moment.month, day=1, tzinfo=tz)
+                moment = moment + relativedelta(month=+1)
+            case 'last_day_next_month':
+                moment = datetime(year=moment.year, month=moment.month, day=1, tzinfo=tz)
+                moment = moment + relativedelta(month=+2, seconds=-1)
+            case 'first_day_prev_year':
+                moment = datetime(year=moment.year, month=1, day=1, tzinfo=tz)
+                moment = moment + relativedelta(days=-1)
+            case 'first_day_this_year':
+                moment = datetime(year=moment.year, month=12, day=31, tzinfo=tz)
+            case 'first_day_next_year':
+                moment = datetime(year=moment.year, month=12, day=31, tzinfo=tz)
+                moment = moment + relativedelta(years=+1)
+            case 'last_day_prev_year':
+                moment = datetime(year=moment.year, month=1, day=1, tzinfo=tz)
+                moment = moment + relativedelta(seconds=-1)
+            case 'last_day_this_year':
+                moment = datetime(year=moment.year, month=1, day=1, tzinfo=tz)
+                moment = moment + relativedelta(years=+1, seconds=-1)
+            case 'last_day_next_year':
+                moment = datetime(year=moment.year, month=1, day=1, tzinfo=tz)
+                moment = moment + relativedelta(years=+2, seconds=-1)
+            case _:
+                return input
+        return moment.isoformat(sep=' ')
+
+    @cmd2.as_subcommand_to('create', 'entry', create2_entry_parser)
+    def create_entry(self, ns: argparse.Namespace):
+        journal_tag = ns.journal
+        # journal_tag = accounting_system.selected["journal"]
+        journal_entry = accounting_system.new_journal_entry(journal_tag)
+        journal_entry.date = self.get_datetime_str(ns.date)
+        journal_entry.description = ns.description
+        journal_entry.reference = ns.reference
+        self.fill_entry_fields(journal_entry, ns.fields)
+
+        command_args = []
+        command_args.append("create")
+        command_args.append("entry")
+        command_args.append(journal_tag)
+        command_args.append(journal_entry.date)
+        command_args.append(journal_entry.description)
+        if journal_entry.reference:
+            command_args.extend(['-ref', journal_entry.reference])
+        command_args.extend(ns.fields)
+        calculated_token = update_sec_token(command_args)
+
+
+
+        if not self._cmd.in_script() and not self._cmd.in_pyscript():
+            # If interactive session:
+            # - output info in console and append command to startup script
+            # head = f'------ New {journal_tag} entry ------'
+            # self._cmd.poutput(head)
+            # self.puts_journal_entry(journal_entry)
+            self._cmd.poutput(journal_entry.full_str())
+
+            with append_file("commands.txt") as comm:
+                # comm.append("create")
+                # comm.append("entry")
+                # comm.append(journal_tag)
+                # comm.append(journal_entry.date)
+                # comm.append(journal_entry.description)
+                # if journal_entry.reference:
+                #     comm.extend(['-ref', journal_entry.reference])
+                # comm.extend(ns.fields)
+                # new_token = update_sec_token(comm)
+                
+                comm.extend(command_args)
+                comm.extend(['--token', calculated_token])
+        else:
+            # Non-interactive session: token verification
+            if calculated_token != ns.token:
+                self._cmd.poutput(f"token mismatch; stored in file:{ns.token}, calculated from data in file:{calculated_token}")
+                # raise ValueError(f"token mismatch; got {calculated_token}, expected {ns.token}")
+
         accounting_system.add_journal_entry(journal_entry)
-        head = f'------ New {journal_tag} entry ------'
-        self._cmd.poutput(head)
-        self.puts_journal_entry(journal_entry)
-        self._cmd.poutput('-' * len(head))
+        globals()["sec_token"] = calculated_token
 
     rud_entry_parser = cmd2.Cmd2ArgumentParser()
     rud_entry_parser.add_argument('-sid', '--sequence-identifier', required=True, type=int)
@@ -411,16 +668,12 @@ class LoadableEntries(CommandSet):
         self._cmd.poutput('DELETED')
 
     close_entry_parser = cmd2.Cmd2ArgumentParser()
-    close_entry_parser.add_argument('-sid', '--sequence-identifier', help='single or multiple identfiers')
-    close_entry_parser.add_argument('-s', '--selected-entry')
-    close_entry_parser.add_argument('-j', '--journal-symbol')
+    # close_entry_parser.add_argument('-s', '--selected-entry')
+    close_entry_parser.add_argument('-j', '--journal-symbol', required=False, help="parent journal")
+    close_entry_parser.add_argument('sid', nargs=(1,), help='single or multiple identfiers')
 
     @cmd2.as_subcommand_to('close', 'entry', close_entry_parser)
     def close_entry(self, ns: argparse.Namespace):
-        if ns.sequence_identifier and ns.selected_entry:
-            raise ValueError('Only one parameter is allowed in the same time: "-sid (--sequence-identifier)" or "-s (--selected-entry)"')
-        if not ns.sequence_identifier and not ns.selected_entry:
-            raise ValueError('One of the fllowing parameters is required: "-sid (--sequence-identifier)" or "-s (--selected-entry)"')
         if ns.journal_symbol:
             journal_symbol = ns.journal_symbol
         else:
@@ -429,14 +682,16 @@ class LoadableEntries(CommandSet):
         if not journal:
             raise ValueError(f'Unknown Journal "{journal_symbol}"')
         
-        journal_entries_to_post: list[JournalEntry] = [None]
+        journal_entries_to_post: list[JournalEntry] = []
         
-        if ns.sequence_identifier:
-            journal_entries_to_post[0] = journal.get_by_sid(ns.sequence_identifier)
-        else:
-            raise NotImplementedError()
-            # sids = ... 
-            # journal_entries_to_post = ...
+        for je_sid in ns.sid:
+            journal_entries_to_post.append(journal.get_by_sid(je_sid))
+
+         # can the whole list of journal entries be posted?
+        for je in journal_entries_to_post:
+            je.can_post_this()
+
+        # post the whole list of journal entries
         for je in journal_entries_to_post:
             je.post_this()
             self._cmd.poutput(f'POST: {je.post}')
@@ -456,7 +711,8 @@ class LoadableEntries(CommandSet):
 
     @cmd2.as_subcommand_to('list', 'entries', list_entries_parser)
     def list_entries(self, ns: argparse.Namespace):
-        self._cmd.poutput('-SID-  ---Date---  -Status-  Description')
+        # self._cmd.poutput('-SID-  ---Date---  -Status-  Description')
+        self._cmd.poutput(JournalEntry.str_header())
 
         journal = accounting_system.get_journal(accounting_system.selected["journal"])
         for number, entry in enumerate(journal.journal_entries, 1):
@@ -724,18 +980,19 @@ class ExampleApp(cmd2.Cmd):
 
 if __name__ == '__main__':
     import sys
-    app = ExampleApp(include_py=True, include_ipy=True, persistent_history_file='ac_history.dat')
+    app = ExampleApp(include_py=True, include_ipy=True, 
+                    startup_script='commands.txt',
+                    persistent_history_file='ac_history.dat')
     app.self_in_py = True  # Enable access to "self" within the py command
     app.debug = True  # Show traceback if/when an exception occurs
     accounting_system = s()
-
     # load_state(accounting_system)
 
     set_prompt_part_1(accounting_system.selected["period"])
     set_prompt_part_2(accounting_system.selected["journal"])
     app.prompt = prompt
 
-    app.cmdloop("Accounting Commander")
+    app.cmdloop(f"Accounting Commander")
 
     
 

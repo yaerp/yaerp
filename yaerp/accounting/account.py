@@ -10,14 +10,19 @@ from yaerp.tools.sorted_collection import SortedCollection
 from yaerp.tools.text import shortify
 
 class AccountSide(IntEnum):
-    DEBIT = 1
-    CREDIT = 2
+    Dr = 1
+    Cr = 2
+
+    def opposite(self) -> int:
+        if self == AccountSide.Dr:
+            return AccountSide.Cr
+        return AccountSide.Dr
 
     def __str__(self) -> str:
-        if self == AccountSide.DEBIT:
-            return "DEBIT"
-        elif self == AccountSide.CREDIT:
-            return "CREDIT"
+        if self == AccountSide.Dr:
+            return "Dr"
+        elif self == AccountSide.Cr:
+            return "Cr"
 
 class Account:
     def __init__(self, tag: str, ledger, currency, name = None) -> None:
@@ -61,7 +66,7 @@ class Account:
         ''' Amount (raw integer) of credit posts. '''
         balance = 0
         for record in self.post_iter(dt_posts=True, ct_posts=True, predicate=predicate):
-            if record.side == AccountSide.DEBIT:
+            if record.side == AccountSide.Dr:
                 balance += record.raw_amount
             else:
                 balance -= record.raw_amount
@@ -76,14 +81,14 @@ class Account:
                 return iter(self.posted_records)
         if dt_posts and not ct_posts:
             if predicate:
-                return filter(predicate, filter(lambda p: p.side == AccountSide.DEBIT, self.posted_records))
+                return filter(predicate, filter(lambda p: p.side == AccountSide.Dr, self.posted_records))
             else:
-                return filter(lambda p: p.side == AccountSide.DEBIT, self.posted_records)
+                return filter(lambda p: p.side == AccountSide.Dr, self.posted_records)
         if not dt_posts and ct_posts:
             if predicate:
-                return filter(predicate, filter(lambda p: p.side == AccountSide.CREDIT, self.posted_records))
+                return filter(predicate, filter(lambda p: p.side == AccountSide.Cr, self.posted_records))
             else:
-                return filter(lambda p: p.side == AccountSide.CREDIT, self.posted_records)
+                return filter(lambda p: p.side == AccountSide.Cr, self.posted_records)
         return iter([])
 
     def get_account_record(self, account_record_sid: str | int = None, post_sid: str | int = None):
@@ -132,7 +137,6 @@ f'''---------------------------------  ----------------  ----------------  -----
         return str.rjust(self.currency.raw2amount(self.get_balance()), length)
 
     def __str__(self):
-
         return f'{self.account_str()}  {self.dr_total_amount_str()}  {self.cr_total_amount_str()}  {self.balance_amount_str()}'
 
     def records_header_str(self) -> str:
@@ -214,12 +218,12 @@ class AccountRecord:
     #     return str.ljust(f'<{self.account.tag}> {name_to_print}', 33)
 
     def dr_amount_str(self, length=16, empty_str='--', ):
-        if self.side == AccountSide.DEBIT:
+        if self.side == AccountSide.Dr:
             return str.rjust(self.account.currency.raw2amount(self.raw_amount), length)
         return str.center(empty_str, length)
 
     def cr_amount_str(self, length=16, empty_str='--'):
-        if self.side == AccountSide.CREDIT:
+        if self.side == AccountSide.Cr:
             return str.rjust(self.account.currency.raw2amount(self.raw_amount), length)
         return str.center(empty_str, length)
 
@@ -229,8 +233,8 @@ class AccountRecord:
 
 def Dr(account: Account, raw_amount: int, journal_entry):
     ''' Initialize a "Dr" Account Record '''
-    return AccountRecord(account=account, raw_amount=raw_amount, side=AccountSide.DEBIT, journal_entry=journal_entry)
+    return AccountRecord(account=account, raw_amount=raw_amount, side=AccountSide.Dr, journal_entry=journal_entry)
 
 def Cr(account: Account, raw_amount: int, journal_entry):
     ''' Initialize a "Cr" Account Record '''
-    return AccountRecord(account=account, raw_amount=raw_amount, side=AccountSide.CREDIT, journal_entry=journal_entry)
+    return AccountRecord(account=account, raw_amount=raw_amount, side=AccountSide.Cr, journal_entry=journal_entry)
