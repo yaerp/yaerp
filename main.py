@@ -358,13 +358,20 @@ def run():
     for ae in acc.posted_records:
         print(ae)
     
-    print(str(dir(je)))
+    print(acc.full_str())
 
-    je2 = copy(je)
-    print(str(dir(je2)))
+    node = a.get_node("main", account_tag="270")
+    path = node.get_account_path()
+    for elem in path:
+        print(elem)
 
-    je3 = deepcopy(je)
-    print(str(dir(je3)))
+    # print(str(dir(je)))
+
+    # je2 = copy(je)
+    # print(str(dir(je2)))
+
+    # je3 = deepcopy(je)
+    # print(str(dir(je3)))
 
 #     text = (
 # '''wer wrrtert er t e  e ert e erte er te y rfghfgh fgh fg hfh fg hfg hf hgh fg hf hf hfgh fg hf ghfgh f hf  fgh fg hf hfg f'''

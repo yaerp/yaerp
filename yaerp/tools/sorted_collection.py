@@ -192,7 +192,6 @@ class SortedCollection(object):
             return self._items[i]
         raise ValueError('No item found with key above: %r' % (k,))
 
-
 # ---------------------------  Simple demo and tests  -------------------------
 if __name__ == '__main__':
 

@@ -10,8 +10,8 @@ class SIDCounter:
         SIDCounter._sid += 1
         return SIDCounter._sid
     
-    def print_form(self, sid: int) -> str:
-        return str.rjust(str(sid), 5)
+    def print_form(sid: int) -> str:
+        return f'{sid:04}'
 
 class SID(SIDCounter, metaclass=Singleton):
     ''' Sequence Identifier '''

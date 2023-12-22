@@ -127,6 +127,27 @@ f'''---------------------------------  ----------------  ----------------  -----
         name_to_print = shortify(name, max_width=max_name_len)
         return str.ljust(f'<{self.tag}> {name_to_print}', length)
 
+    def full_str(self):
+        txt = []
+        ac_caption = f'"{self.name}"'
+        txt.append(f'--------------------------------------------------------------\n')
+        txt.append(f'A/C:  {"/" + self.tag + "/":<11}  {self.name:>43}\n')
+        txt.append(f'+------------------------------------------------------------+\n')
+        txt.append(f'| {"Dr":^16} | {"Cr":^16} | {"Balance " + self.currency.symbol:>20} |\n')
+        txt.append(f'+==================|==================|======================|\n')
+        txt.append(f'| {self.dr_total_amount_str(16):^16} | {self.cr_total_amount_str(16):^16} | {self.balance_amount_str(20):>20} |\n')
+        txt.append(f'+------------------+------------------+----------------------+\n')
+        return ''.join(txt)
+
+    def short_str(self):
+        txt = []
+        txt.append(f'{"/" + self.tag + "/":<10} ')
+        txt.append(f'{self.name + " ":.<26}.')
+        txt.append(f'{" " + self.dr_total_amount_str(0):.>10}  ')
+        txt.append(f'{" " + self.cr_total_amount_str(0):.>10}  ')
+        txt.append(f'{" " + self.balance_amount_str(0) + " " + self.currency.symbol:.>15}')
+        return ''.join(txt)
+
     def dr_total_amount_str(self, length=16):
         return str.rjust(self.currency.raw2amount(self.get_debit()), length)
 

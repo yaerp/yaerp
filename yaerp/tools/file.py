@@ -15,7 +15,7 @@ class append_file(ContextDecorator):
         # logging.info('Entering: %s', self.name)
 
     def __exit__(self, exc_type, exc, exc_tb):
-        with open(self.name, "a") as file:
+        with open(self.name, "a", encoding="UTF-8") as file:
             new_content = container2str(self.content)
             file.write(new_content)
             file.write('\n')

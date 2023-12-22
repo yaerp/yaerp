@@ -5,7 +5,6 @@ from dateutil.tz import *
 from dateutil.relativedelta import *
 
 
-
 def dt(cdt: datetime, 
        year=None, month=None, day=None,
        hour=None, minute=None, second=None, microsecond=None, 
@@ -32,84 +31,73 @@ def dt(cdt: datetime,
 def datetime_str(input: str, date_time=None, zeroed_time=False) -> datetime:
         if not input:
             raise ValueError
-        input = input.lower().strip()
+        input = input.upper().strip()
         if date_time:
             cdt = date_time
         else:
             tz = tzlocal()
             cdt = datetime.now(tz=tz)
+            # reset microseconds
+            cdt = datetime(year=cdt.year, month=cdt.month, day=cdt.day,
+                           hour=cdt.hour, minute=cdt.minute, second=cdt.second,
+                           tzinfo=cdt.tzinfo)
         if zeroed_time:
             cdt = datetime(year=cdt.year, month=cdt.month, day=cdt.day, tzinfo=cdt.tzinfo)
         match(input):
-            case 'now':
+            case 'NOW':
                 pass
-            case 'today':
-                pass
-            case 'yesterday':
+            case 'TODAY':
+                cdt = dt(cdt, zeroed_time=True)
+            case 'YESTERDAY':
+                cdt = dt(cdt, zeroed_time=True)
                 cdt = cdt + relativedelta(days=-1)
-            case 'tomorrow':
+            case 'TOMORROW':
+                cdt = dt(cdt, zeroed_time=True)
                 cdt = cdt + relativedelta(days=+1)
-            case 'prev_week':
-                cdt = dt(cdt, zeroed_time=zeroed_time)
-                cdt = cdt + relativedelta(weeks=-1)
-            case 'monday':
-                cdt = dt(cdt, zeroed_time=zeroed_time)
-                cdt = cdt + relativedelta(weekday=MO)
-            case 'tuesday':
-                cdt = dt(cdt, zeroed_time=zeroed_time)
-                cdt = cdt + relativedelta(weekday=TU)
-            case 'wednesday':
-                cdt = dt(cdt, zeroed_time=zeroed_time)
-                cdt = cdt + relativedelta(weekday=WE)
-            case 'thursday':
-                cdt = dt(cdt, zeroed_time=zeroed_time)
-                cdt = cdt + relativedelta(weekday=TH)
-            case 'friday':
-                cdt = dt(cdt, zeroed_time=zeroed_time)
-                cdt = cdt + relativedelta(weekday=FR)
-            case 'saturday':
-                cdt = dt(cdt, zeroed_time=zeroed_time)
-                cdt = cdt + relativedelta(weekday=SA)
-            case 'sunday':
-                cdt = dt(cdt, zeroed_time=zeroed_time)
-                cdt = cdt + relativedelta(weekday=SU)
-            case 'next_week':
-                cdt = dt(cdt, zeroed_time=zeroed_time)
-                cdt = cdt + relativedelta(weeks=+1)
-            case 'prev_month_first_day':
-                cdt = dt(cdt, day=1, zeroed_time=zeroed_time)
+            case 'FDPM':
+                cdt = dt(cdt, day=1, zeroed_time=True)
                 cdt = cdt + relativedelta(months=-1)
-            case 'prev_month_last_day':
-                cdt = dt(cdt, day=1, zeroed_time=zeroed_time)
+            case 'LDPM':
+                cdt = dt(cdt, day=1, zeroed_time=True)
                 cdt = cdt + relativedelta(days=-1)
-            case 'this_month_first_day':
-                cdt = dt(cdt, day=1, zeroed_time=zeroed_time)
-            case 'this_month_last_day':
-                cdt = dt(cdt, day=1, zeroed_time=zeroed_time)
+            case 'FDTM':
+                cdt = dt(cdt, day=1, zeroed_time=True)
+            case 'LDTM':
+                cdt = dt(cdt, day=1, zeroed_time=True)
                 cdt = cdt + relativedelta(months=+1, days=-1)
-            case 'next_month_first_day':
-                cdt = dt(cdt, day=1, zeroed_time=zeroed_time)
+            case 'FDNM':
+                cdt = dt(cdt, day=1, zeroed_time=True)
                 cdt = cdt + relativedelta(months=+1)
-            case 'next_month_last_day':
-                cdt = dt(cdt, day=1, zeroed_time=zeroed_time)
+            case 'LDNM':
+                cdt = dt(cdt, day=1, zeroed_time=True)
                 cdt = cdt + relativedelta(months=+2, seconds=-1)
-            case 'prev_year_first_day':
-                cdt = dt(cdt, month=1, day=1, zeroed_time=zeroed_time)
+            case 'FDPY':
+                cdt = dt(cdt, month=1, day=1, zeroed_time=True)
                 cdt = cdt + relativedelta(years=-1)
-            case 'this_year_first_day':
-                cdt = dt(cdt, month=1, day=1, zeroed_time=zeroed_time)
-            case 'next_year_first_day':
-                cdt = dt(cdt, month=1, day=1, zeroed_time=zeroed_time)
-                cdt = cdt + relativedelta(years=+1)
-            case 'prev_year_last_day':
-                cdt = dt(cdt, month=1, day=1, zeroed_time=zeroed_time)
+            case 'LDPY':
+                cdt = dt(cdt, month=1, day=1, zeroed_time=True)
                 cdt = cdt + relativedelta(days=-1)
-            case 'this_year_last_day':
-                cdt = dt(cdt, month=1, day=1, zeroed_time=zeroed_time)
+            case 'LSPY':
+                cdt = dt(cdt, month=1, day=1, hour=23, minute=59, second=59, microsecond=0)
+                cdt = cdt + relativedelta(days=-1)    
+            case 'FDTY':
+                cdt = dt(cdt, month=1, day=1, zeroed_time=True)
+            case 'LDTY':
+                cdt = dt(cdt, month=1, day=1, zeroed_time=True)
                 cdt = cdt + relativedelta(years=+1, days=-1)
-            case 'next_year_last_day':
-                cdt = dt(cdt, month=1, day=1, zeroed_time=zeroed_time)
+            case 'LSTY':
+                cdt = dt(cdt, month=1, day=1, hour=23, minute=59, second=59, microsecond=0)
+                cdt = cdt + relativedelta(years=+1, days=-1)    
+            case 'FDNY':
+                cdt = dt(cdt, month=1, day=1, zeroed_time=True)
+                cdt = cdt + relativedelta(years=+1)
+            case 'LDNY':
+                cdt = dt(cdt, month=1, day=1, zeroed_time=True)
+                cdt = cdt + relativedelta(years=+2, days=-1)
+            case 'LSNY':
+                cdt = dt(cdt, month=1, day=1, hour=23, minute=59, second=59, microsecond=0)
                 cdt = cdt + relativedelta(years=+2, days=-1)
             case __:
-                raise ValueError(f'unknown "{__}"')
-        return cdt
+                return __
+        return cdt.isoformat(sep=' ', timespec='seconds')
+        

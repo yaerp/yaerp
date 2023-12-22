@@ -1,7 +1,7 @@
 import copy
 import operator
 from uuid import uuid4
-from yaerp.accounting.account import AccountRecord, AccountSide
+from yaerp.accounting.account3 import AccountRecord, AccountSide
 from yaerp.tools.sid import SID
 from yaerp.tools.sorted_collection import SortedCollection
 from yaerp.tools.text import shortify
@@ -39,74 +39,51 @@ class Journal:
             ledger.register_journal(self)       
         self.journal_entries = SortedCollection([], key=operator.attrgetter('date', 'time', 'sid'))
 
-    def post_aggregated(self, journal_entries, summary_date, summary_description,
-                        summary_reference=None, **summary_info_fields):
+    def post_these(self, draft_journal_entries):
         ''' 
-        Aggregate journal entries into the 'summary entry' and post this to the ledger. 
-        (many-to-one)
+        Aggregate journal entries into a single post.
         '''
-        if not hasattr(journal_entries, '__iter__'):
-            ValueError('\'journal_entries\' is not iterable')
+        if not hasattr(draft_journal_entries, '__iter__'):
+            ValueError('argument \'draft_journal_entries\' is not iterable')
 
-        # Build empty summary entry (similar to General Journal entry):
-        summary_journal_entry = JournalEntry(self)
-        
-        summary_journal_entry.date = summary_date
-        summary_journal_entry.description = summary_description
-        summary_journal_entry.reference = summary_reference
-        for field_name, field_value in summary_info_fields.items():
-            summary_journal_entry.add_info(field_name, field_value)
-        
-        # Remove current account fields and put new, all-purpose 'Account' field:
-        clone = JournalEntry(self)        
-        for key, value in clone.fields.items():
-            if isinstance(value, (AccountRecord, list)):
-                del summary_journal_entry.fields[key]
-        summary_journal_entry.fields['Account'] = []
+        # removing duplicates
+        je_list = list(dict.fromkeys(draft_journal_entries))
 
+        for je in je_list:
+            if not je.can_post_this(self):
+                raise ValueError(f"cannot post j/e {je.sid}")
+            
+        bulk_post_id = SID().new()
+        self.ledger.register_post(bulk_post_id)
+        for je in je_list:
+            self.ledger.post_journal_entry(self, je, define_post_id=bulk_post_id)
+            if je not in self.journal_entries:
+                self.journal_entries.insert_right(je)
 
-        # Group and accumulate account entries:
-
-        summary_account_entries = {}
-
-        def add_to_summary(account_entry):
-            if not account_entry.raw_amount or not account_entry.account:
-                return
-            if account_entry.post:
-                raise RuntimeError(f'already posted: account entry \'{account_entry}\', journal entry \'{account_entry.journal_entry}\'')
-            key = f'{account_entry.side}@{account_entry.account.tag}'
-            if key in summary_account_entries:
-                summary_account_entries[key] += account_entry
-            else:
-                summary_account_entries[key] = AccountRecord(
-                    account_entry.account,
-                    account_entry.raw_amount,
-                    account_entry.side,
-                    summary_journal_entry,
-                    None)
-
-        for journal_entry in set(journal_entries):
-            self.validate_new_journal_entry(journal_entry)
-            for value in journal_entry.fields.values():
-                if isinstance(value, AccountRecord):
-                    add_to_summary(value)
+    def journal_entries_gen(self, posted: bool=True, not_posted: bool=True, date_beg: str=None, date_end: str=None):
+        if posted and not_posted:
+            for je in self.journal_entries:
+                if date_beg and je.date < date_beg:
                     continue
-                if isinstance(value, list):
-                    for account_entry in value:
-                        add_to_summary(account_entry)
-
-        # for sum_key in sorted(summary_account_entries.keys()):
-        #     print(f"{sum_key}: {summary_account_entries[sum_key]}")
-
-        # Copy aggregated data into summary entry:
-        for key in sorted(summary_account_entries):
-            summary_journal_entry.fields['Account'].append(summary_account_entries[key])
-        self.validate_new_journal_entry(summary_journal_entry)
-
-        # Post summary entry to the ledger:
-        post = self.ledger.post_summary_entry(self, summary_journal_entry)
-        for journal_entry in journal_entries:
-            journal_entry._set_posted(post)
+                if date_end and je.date > date_end:
+                    continue
+                yield je
+        elif posted and not not_posted:
+            for je in self.journal_entries:
+                if je.post:
+                    if date_beg and je.date < date_beg:
+                        continue
+                    if date_end and je.date > date_end:
+                        continue
+                    yield je
+        elif not posted and not_posted:
+            for je in self.journal_entries:
+                if not je.post:
+                    if date_beg and je.date < date_beg:
+                        continue
+                    if date_end and je.date > date_end:
+                        continue
+                    yield je
 
     def gen_new(self):
         for je in self.journal_entries:
@@ -125,20 +102,24 @@ class Journal:
             if entry_sids and je.sid in entry_sids:
                 yield je
 
-    def get_by_sid(self, entry_sid: int | str):
+    def get_by_sid(self, entry_sid: int | str, not_rise_exception=False):
         if isinstance(entry_sid, str):
             entry_sid = int(entry_sid)
         for je in self.journal_entries:
             if je.sid == entry_sid:
                 return je
+        if not_rise_exception:
+            return None
         raise ValueError(f'Not found Journal Entry "{self.tag}:{entry_sid}"')
     
-    def get_by_guid(self, entry_guid: int | str):
+    def get_by_guid(self, entry_guid: int | str, not_rise_exception=False):
         if isinstance(entry_guid, str):
             entry_guid = int(entry_guid)
         for je in self.journal_entries:
             if je.guid == entry_guid:
                 return je
+        if not_rise_exception:
+            return None
         raise ValueError(f'Not found Journal Entry "{self.tag}:GUID={entry_guid}"')
 
     def gen_by_post(self, post):
@@ -226,7 +207,19 @@ class JournalEntry:
             self.fields = self.journal.initialize_fields(self)
         else:
             self.fields = {}
-        
+
+    def __hash__(self):
+        return hash((self.date, self.time, self.sid))
+
+    def __eq__(self, other):
+        return (self.date, self.time, self.sid) == (other.date, other.time, other.sid)
+
+    def __lt__(self, other):
+        return (self.date, self.time, self.sid) < (other.date, other.time, other.sid)
+
+    def __gt__(self, other):
+        return (self.date, self.time, self.sid) > (other.date, other.time, other.sid)
+
     def __copy__(self):
         cls = self.__class__
         je_copy = cls.__new__(cls)
@@ -250,9 +243,9 @@ class JournalEntry:
             elif isinstance(value, list):
                 je_copy.fields[name] = list()
                 for record in value:
-                    ac = self.fields[name].account
-                    si = self.fields[name].side
-                    am = self.fields[name].raw_amount
+                    ac = record.account
+                    si = record.side
+                    am = record.raw_amount
                     ar_copy = AccountRecord(ac, am, si, je_copy, None)
                     je_copy.fields[name].append(ar_copy)
             else:
@@ -261,6 +254,24 @@ class JournalEntry:
 
     def __deepcopy__(self, memo):
         return copy.copy(self)
+
+    def account_records_gen(self, side=None, account=None):
+        for value in self.fields.values():
+            if isinstance(value, AccountRecord):
+                if value.side and value.account:
+                    if side and value.side != side:
+                        continue
+                    if account and value.account != account:
+                        continue
+                    yield value
+            elif isinstance(value, list):
+                for record in value:
+                    if record.side and record.account:
+                        if side and record.side != side:
+                            continue
+                        if account and record.account != account:
+                            continue
+                        yield record
 
     def is_balanced(self):
         return self.get_debit() == self.get_credit()
@@ -296,21 +307,6 @@ class JournalEntry:
         ''' Add a Credit Record '''
         # self.flow(field_tag, account, amount, AccountSide.CREDIT)
         self.add_record(field_tag, raw_amount, account=account, side=AccountSide.Cr)
-
-    # def flow(self, field_tag: str, amount: int, account, side: AccountSide):
-    #     ''' Add a Debit/Credit '''
-    #     if field_tag not in self.fields.keys():
-    #         raise RuntimeError(f'unknown field \'{field_tag}\'')
-    #     if side != AccountSide.DEBIT and side != AccountSide.CREDIT:
-    #         raise ValueError('account side must be DEBIT or CREDIT')
-    #     if isinstance(self.fields[field_tag], AccountRecord):
-    #         if self.fields[field_tag].side != side:
-    #             raise ValueError(f'Journal field \'{field_tag}\' expects {self.fields[field_tag].side} operation.')
-    #         self.fields[field_tag] = AccountRecord(account, amount, side, self, None)
-    #     elif isinstance(self.fields[field_tag], list):
-    #         self.fields[field_tag].append(AccountRecord(account, amount, side, self, None))
-    #     else:
-    #         raise RuntimeError(f'Journal field "{field_tag}" is not dedicated for debit/credit entries.')
 
     def add_record(self, field_tag: str, raw_amount: int, /, account = None, side: AccountSide = None):
         ''' 
@@ -350,24 +346,29 @@ class JournalEntry:
         return self._get_side_sum(AccountSide.Cr)
 
     def _get_side_sum(self, side):
-        result = 0
-        for field in self.fields.values():
-            if isinstance(field, AccountRecord):
-                if field.side != AccountSide.Dr and field.side != AccountSide.Cr:
-                    raise ValueError('account side must be DEBIT or CREDIT')
-                if field.raw_amount and not field.account:
-                    raise ValueError('entry with no account has non zero amount')
-                if field.side == side:
-                    result += field.raw_amount
-            elif isinstance(field, list):
-                for account_entry in field:
-                    if account_entry.side != AccountSide.Dr and account_entry.side != AccountSide.Cr:
-                        raise ValueError('account side must be DEBIT or CREDIT')
-                    if account_entry.raw_amount and not account_entry.account:
-                        raise ValueError('entry with no account has non zero amount')
-                    if account_entry.side == side:
-                        result += account_entry.raw_amount
-        return result
+        sum = 0
+        for record in self.account_records_gen(side=side, account=None):
+            sum += record.raw_amount
+        return sum
+
+        # result = 0
+        # for field in self.fields.values():
+        #     if isinstance(field, AccountRecord):
+        #         if field.side != AccountSide.Dr and field.side != AccountSide.Cr:
+        #             raise ValueError('account side must be DEBIT or CREDIT')
+        #         if field.raw_amount and not field.account:
+        #             raise ValueError('entry with no account has non zero amount')
+        #         if field.side == side:
+        #             result += field.raw_amount
+        #     elif isinstance(field, list):
+        #         for account_entry in field:
+        #             if account_entry.side != AccountSide.Dr and account_entry.side != AccountSide.Cr:
+        #                 raise ValueError('account side must be DEBIT or CREDIT')
+        #             if account_entry.raw_amount and not account_entry.account:
+        #                 raise ValueError('entry with no account has non zero amount')
+        #             if account_entry.side == side:
+        #                 result += account_entry.raw_amount
+        # return result
 
     def _get_currency(self):
         for field in self.fields.values():
@@ -415,10 +416,12 @@ class JournalEntry:
         # self.journal.validate_new_journal_entry(self)
         if self.can_post_this(self):
             self.journal.ledger.post_journal_entry(self.journal, self)
+            if self not in self.journal.journal_entries:
+                self.journal.journal_entries.insert_right(self)
 
-    def _set_posted(self, post):
-        if not post:
-            raise ValueError('post is None')
+    def _set_posted(self, post_identifier):
+        if not post_identifier or post_identifier <= 0:
+            raise ValueError(f'incorrent post identifier {post_identifier}')
         for name, value in self.fields.items():
             if isinstance(value, AccountRecord):
                 if value.raw_amount and value.account:
@@ -427,7 +430,7 @@ class JournalEntry:
                             value.raw_amount,
                             value.side,
                             value.journal_entry,
-                            post
+                            post_identifier
                             )
             elif isinstance(value, list):
                 for idx, account_entry in enumerate(value):
@@ -437,26 +440,14 @@ class JournalEntry:
                             account_entry.raw_amount,
                             account_entry.side,
                             account_entry.journal_entry,
-                            post
+                            post_identifier
                             )
-        self.post = post
+        self.post = post_identifier
 
     def str_header():
         return '-SID-  ---Date---  --Status--  -Description-'
 
-    def __str__(self):
-        if self.post:   
-            status = '   POSTED  '
-        else:
-            if self.is_balanced():
-                status = '    NEW   '
-            else:
-                status = 'UNBALANCED'
-        result = f'{SID.print_form(self.sid)}  {str.rjust(self.date, 10)}  {status}  "{self.description}"'
-        return result
-    
-    def full_str(self):
-        txt = []
+    def status_str(self, constant_size=False):
         if self.post:   
             status = 'POSTED'
         else:
@@ -464,12 +455,28 @@ class JournalEntry:
                 status = 'NOT POSTED'
             else:
                 status = 'UNBALANCED'
-        je_caption = f'"{self.journal.tag}" j/e no. {SID.print_form(self.sid)} ({status})'
+        return status  
+
+    def __str__(self):
+        status = self.status_str()
+        result = f'SID:{self.sid:04}  {self.date:>10}  {status:^10}  "{self.description}"'
+        return result
+    
+    def full_str(self):
+        txt = []
+        if self.post:   
+            status = f'POST {self.post:>04}'
+        else:
+            if self.is_balanced():
+                status = 'NOT POSTED'
+            else:
+                status = 'UNBALANCED'
+        je_caption = f'j/e {self.sid:>04}  "{self.journal.tag}" ({status})'
         txt.append(f'----------------------------------------------------------------------------\n')
         txt.append(f'{self.date:<33}  {shortify(self.description, 41):>41}')
         txt.append('\n')
         txt.append(f' {je_caption:<35} +-------------------------------------+\n')
-        txt.append(f' {shortify("ref:" + self.reference if self.reference else "", 39):^35} | {"Dr":^16} | {"Cr":^16} |\n')
+        txt.append(f' {shortify("ref: " + self.reference if self.reference else "", 39):^35} | {"Dr":^16} | {"Cr":^16} |\n')
         txt.append(f'+====================================|==================|==================|\n')
         for field_name, field_value in self.fields.items():
             if isinstance(field_value, AccountRecord):

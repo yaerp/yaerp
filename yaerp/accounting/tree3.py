@@ -1,7 +1,8 @@
 from functools import reduce
 from itertools import chain
 
-from yaerp.accounting.account import Account
+from yaerp.accounting.account3 import Account
+from yaerp.accounting.marker import Marker
 
 
 class AccountTree():
@@ -19,13 +20,26 @@ class AccountTree():
         if parent is not None:
             parent.append_child(self)
         self.account = account
-        self.parent = parent
-        self.children = None
+        self.parent = parent # AccountTree object or None (if "self" is root node)
+        self.children = None # list of AccountTree objects
+        self.marker = Marker() # 
 
     def append_child(self, child):
         if self.children is None:
             self.children = list()
         self.children.append(child)
+
+    def add_marks(self, *marks):
+        for mark in marks:
+            self.marker.add(mark)
+        for child in self.children:
+            child.add_marks(marks)
+
+    def remove_marks(self, *marks):
+        for mark in marks:
+            self.marker.remove(mark)
+        for child in self.children:
+            child.remove_marks(marks)
 
     def get_node(self, tag=None, name=None, guid=None):
         if self.account is not None:
@@ -312,6 +326,25 @@ class AccountTree():
             txt.append(f' tree ')
         return ''.join(txt)
     
+    def full_str(self):
+        txt = []
+        ac_path = self.get_account_path()
+        for index, tag in enumerate(ac_path):
+            if index == 0 and tag is None:
+                pass
+                # self._cmd.poutput('Chart of Accounts')
+            else:
+                txt.append(f"{' '*index}{tag}")
+        mark_line = []
+        for mark in self.marker.to_list():
+            mark_line.append(str(mark))
+        txt.append(', '.join(mark_line))
+        if self.account:
+            txt.append(self.account.full_str().strip())
+        else:
+            txt.append('--')
+        return '\n'.join(txt)
+
     def get_node_path(self) -> list:
         node_path = []
         element = self
