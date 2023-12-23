@@ -61,7 +61,7 @@ def run():
     entry2.description = 'Example of Sales'
     entry2.add_record("Sale", 355330000)
     entry2.add_record("Cash", 355330000)
-    entry2.put_this()
+    entry2.put_into_journal()
     entry2.post_this()
 
     entry3 = JournalEntry(journal=sale_journal)
@@ -77,7 +77,7 @@ def run():
     entry4.description = 'Purchase of the printer'
     entry4.credit('Account', 158, account100)
     entry4.debit('Account', 158, account400)
-    entry4.put_this()
+    entry4.put_into_journal()
     # entry4.post_this()
 
     entry5 = JournalEntry(journal=journal)

@@ -379,13 +379,25 @@ class JournalEntry:
                     return account_entry.account.currency
         raise RuntimeError("currency not found")
 
-    def put_this(self):
-        ''' Insert this entry to the journal as "draft" journal entry '''
+    def put_into_journal(self):
+        ''' Insert this entry to the journal '''
         if self.journal is None:
             raise ValueError('journal entry has no parent journal')
         if self in self.journal.journal_entries:
-            raise ValueError('this journal entry is alraedy added to the journal')
+            raise ValueError('journal entry is already in the journal')
+        if self.post:
+            raise ValueError('calling this function for posted j/e make no sense')
         self.journal.journal_entries.insert_right(self)
+
+    def del_from_journal(self):
+        ''' Delete this entry from the journal '''
+        if self.journal is None:
+            raise ValueError('journal entry has no parent journal')
+        if self not in self.journal.journal_entries:
+            raise ValueError('journal entry not found in the journal')
+        if self.post:
+            raise ValueError('cannot delete posted journal entry')
+        self.journal.journal_entries.remove(self)
 
     def can_post_this(self, use_exceptions=True):
         ''' Check possibility to post this journal entry to the ledger. '''

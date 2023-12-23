@@ -200,7 +200,7 @@ class LoadableAccounts(CommandSet):
     create_account_parser.add_argument('-n', '--name', required=True, help='Full account name')
     create_account_parser.add_argument('-c', '--currency', required=True, help='Currency symbol (3-character code)')
     create_account_parser.add_argument('-token', '--token', default=None, help="Secure token to seal commands stored in script. ")
-    create_account_parser.add_argument('-m', '--markers', nargs=(0,), help='Flag marker(s) semi-colon separated, i.e: "ASSETS" or "ASSETS;STOCK" ')
+    create_account_parser.add_argument('-m', '--markers', nargs=(0,), help='Flag marker(s) semi-colon separated, i.e: "-m ASSETS" or "-m ASSETS STOCK"')
 
     @cmd2.as_subcommand_to('create', 'account', create_account_parser)
     def create_account(self, ns: argparse.Namespace):
@@ -261,15 +261,14 @@ class LoadableAccounts(CommandSet):
         if ns.tag:
             ac = accounting_system.get_account(ns.tag)
             ac_node = accounting_system.coa.get_node(tag=ac.tag)
-            if ac_node:
-                ac_path = ac_node.get_account_path()
-                for index, tag in enumerate(ac_path):
-                    if index == 0 and tag is None:
-                        pass
-                        # self._cmd.poutput('Chart of Accounts')
-                    else:
-                        self._cmd.poutput(f'{" "*index}{tag}')
-            self._cmd.poutput(ac.full_str()) 
+            ac_path = ac_node.get_account_path()
+            for index, tag in enumerate(ac_path):
+                if index == 0 and tag is None:
+                    pass
+                    # self._cmd.poutput('Chart of Accounts')
+                else:
+                    self._cmd.poutput(f'{" "*index}{tag}')
+            self._cmd.poutput(ac_node.full_str()) 
         elif ns.name:
             raise NotImplementedError()
 
@@ -277,34 +276,61 @@ class LoadableAccounts(CommandSet):
     update_account_parser.add_argument('-t', '--tag', required=True)
     update_account_parser.add_argument('-nn', '--new-name', required=False)
     update_account_parser.add_argument('-nt', '--new-tag', required=False)
+    update_account_parser.add_argument('-m', '--markers', required=False, nargs=(1,), help='Create new set of mark(s) in the account tree, i.e: "-m ASSETS" or "-m ASSETS STOCK"') 
+    update_account_parser.add_argument('-am', '--add-markers', required=False, nargs=(1,), help='Add mark(s) to exsting marker set in the account tree, i.e: 1 marker: "-am ASSETS" or more than 1: "-am EXPENSES COST_OF_GOODS_SOLD"')
+    update_account_parser.add_argument('-dm', '--del-markers', required=False, nargs=(1,), help='Delete mark(s) from existing marker set in the account tree, i.e: "-dm ASSETS" or "-dm ASSETS STOCK"') 
     update_account_parser.add_argument('-token', '--token', default=None, help='Secure token to seal commands stored in script. ')
-    update_account_parser.add_argument('-am', '--add-markers', required=False, nargs=(1,), help='Markers to add to the account, i.e: 1 marker: "ASSETS" or more than 1: "EXPENSES,COST_OF_GOODS_SOLD"')
-    update_account_parser.add_argument('-dm', '--del-markers', required=False, nargs=(1,), help='Markers to delete from the account, i.e: "ASSETS", "EXPENSES", or the word "ALL" to empty marker list') 
-
+    
     @cmd2.as_subcommand_to('update', 'account', update_account_parser)
     def update_account(self, ns: argparse.Namespace):
 
         ac = accounting_system.get_account(ns.tag)
-        new_parent = accounting_system.coa
-        # if ns.new_parent:
-        #     new_parent = accounting_system.coa.get_node(tag=ns.new_parent)
-        # new_parent_path = new_parent.get_account_path()
-        # if ac in new_parent_path:
-        #     raise ValueError('cannot move account in the same node')
+        ac_tree = accounting_system.coa.get_node(tag=ac.tag)
+        if ns.markers:
+            if ns.add_markers or ns.del_markers:
+                raise ValueError('-m / --markers cannot be used with -am / --add-markers / -dm / --del-markers')
         # run command
         if ns.new_name:
             ac.name = ns.new_name
+
+        mark_list = []
+        if ns.markers:
+            for m_str in ns.markers:
+                m = Marker.instance_mark_by_name(m_str)
+                if m not in mark_list:
+                    mark_list.append(m)
+            ac_tree.marker = Marker(*mark_list) 
+            for internal_nodes in ac_tree.get_internals_gen():
+                internal_nodes.marker = Marker(*mark_list)
+
+        add_mark_set = set()          
         if ns.add_markers:
-            pass
+            for m_str in ns.add_markers:
+                m = Marker.instance_mark_by_name(m_str)
+                add_mark_set.add(m)
+
+        del_mark_set = set()
         if ns.del_markers:
-            pass
-        if ns.new_tag:
+            for m_str in ns.del_markers:
+                m = Marker.instance_mark_by_name(m_str)
+                del_mark_set.add(m)
+
+        if add_mark_set or del_mark_set:
+            marks_to_really_add = add_mark_set.difference(del_mark_set)
+            marks_to_really_del = del_mark_set.difference(add_mark_set)
+            ac_tree.marker.extend(marks_to_really_add)
+            ac_tree.marker.reduce(marks_to_really_del)
+            for internal_nodes in ac_tree.get_internals_gen():
+                internal_nodes.marker.extend(marks_to_really_add)
+                internal_nodes.marker.reduce(marks_to_really_del)
+
+        if ns.new_tag: # at the very end change tag if 
             if ns.new_tag in accounting_system.accounts.keys():
                 raise ValueError(f'New tag found in existing Account "{ns.new_tag}"')
             ac.tag = ns.new_tag
+            accounting_system.accounts[ac.tag] = ac   
+            ac = accounting_system.get_account(ns.new_tag)                     
             del accounting_system.accounts[ns.tag]
-            accounting_system.accounts[ac.tag] = ac
-            ac = accounting_system.get_account(ns.new_tag)
             if not ac:
                 raise ValueError("cannot get account with changed tag")
         # store command
@@ -315,18 +341,19 @@ class LoadableAccounts(CommandSet):
             command_args.extend(["--new-tag", ac.tag])
         if ns.new_name:
             command_args.extend(["--new-name", ac.name])
-
-        info_text = []
-        ac_node = accounting_system.coa.get_node(tag=ac.tag)
-        if ac_node:
-            ac_path = ac_node.get_account_path()
-            for index, tag in enumerate(ac_path):
-                if index == 0 and tag is None:
-                    pass
-                else:
-                    info_text.append(f'{" "*index}{tag}\n')
-        info_text.append(ac.full_str())
-        store_command(self._cmd, command_args, ns.token, ''.join(info_text))
+        if mark_list:
+            command_args.append('--markers')
+            for m in mark_list:
+                command_args.append(str(m))
+        if add_mark_set:
+            command_args.append('--add-markers')
+            for m in add_mark_set:
+                command_args.append(str(m))
+        if del_mark_set:
+            command_args.append('--del-markers')
+            for m in del_mark_set:
+                command_args.append(str(m))
+        store_command(self._cmd, command_args, ns.token, ac_tree.full_str())
 
     delete_account_parser = cmd2.Cmd2ArgumentParser()
     delete_account_parser.add_argument('-t', '--tag', required=True, nargs=(1,), help="Tag identifier(s)")
@@ -396,114 +423,6 @@ class LoadableEntries(CommandSet):
                 for record in value:
                     puts_side(record.side)
                     self._cmd.poutput(f'  "{record.account.name}"  {record.account.currency.raw2amount(record.raw_amount)}')
-
-    # @cmd2.as_subcommand_to('create', 'entry', create_entry_parser)
-    # def create_entry(self, ns: argparse.Namespace):
-    #     journal_tag = accounting_system.selected["journal"]
-    #     journal_entry = accounting_system.new_journal_entry(journal_tag)
-    #     if ns.entry_date:
-    #         journal_entry.date = ns.entry_date
-    #     else:
-    #         journal_entry.date = accounting_system.get_active_date()
-    #     journal_entry.description = ns.entry_description
-    #     journal_entry.reference = ns.reference
-
-    #     account_text = None
-    #     side_text = None
-    #     amount_text = None
-
-    #     account = None
-    #     side = None
-    #     amount = None
-
-    #     for key, value in journal_entry.fields.items():
-    #         # input_text = self._cmd.read_input(f'{key} <<< ')
-    #         # self._cmd.poutput(f'{key}={input_text}')
-    #         if value is None:
-    #             '''Get info '''
-    #             input_text = self._cmd.read_input(f'"{key}" info field: ')
-    #             journal_entry.add_info(key, input_text)
-    #         elif isinstance(value, AccountRecord):
-    #             ''' Get account field (specific) '''
-    #             if not value.account:
-    #                 if not value.side:
-    #                     account_req_mesg = f'"{key}": Account to impact: '
-    #                 else:
-    #                     if value.side == AccountSide.DEBIT:
-    #                         account_req_mesg = f'"{key}" Dr Account to impact: '
-    #                     else:
-    #                         account_req_mesg = f'"{key}" Cr Account to impact: '
-    #             side_req_mesg = f'"{key}": Account Side: '
-    #             if not value.side:
-    #                 amount_req_mesg = f'"{key}": Amount: '
-    #             else:
-    #                 if value.side == AccountSide.DEBIT:
-    #                     amount_req_mesg = f'"{key}" Dr Amount: '
-    #                 else:
-    #                     amount_req_mesg = f'"{key}" Cr Amount: '
-    #             if not value.account:
-    #                 # account_tag = self._cmd.read_input(f'"{key}" field: Account to impact: ')
-    #                 account_tag = self._cmd.read_input(account_req_mesg)
-    #                 if not account_tag:
-    #                     self._cmd.poutput(f'  Interrupted')
-    #                     return
-    #                 account = accounting_system.get_account(account_tag)
-    #             if not value.side:
-    #                 # side_text = self._cmd.read_input(f'"{key}" field: Account Side: ', completion_mode=CompletionMode.CUSTOM , choices=['Dr', 'Cr'])
-    #                 side_text = self._cmd.read_input(side_req_mesg, completion_mode=CompletionMode.CUSTOM , choices=['Dr', 'Cr'])
-    #                 if not side_text:
-    #                     self._cmd.poutput(f'  Interrupted')
-    #                     return
-    #                 if side_text == "Dr":
-    #                     side = AccountSide.DEBIT
-    #                 elif side_text == "Cr":
-    #                     side = AccountSide.CREDIT
-    #                 else:
-    #                     ValueError("Incorrect account side argument. Expecting: 'Dr' or 'Cr'")
-    #             # input_prompt = f'"{key}" field: Amount: '
-    #             # amount_text = self._cmd.read_input(input_prompt)
-    #             amount_text = self._cmd.read_input(amount_req_mesg)
-    #             if not amount_text:
-    #                 self._cmd.poutput(f'  Interrupted')
-    #                 return
-    #             amount = int(amount_text)
-    #             journal_entry.add_record(key, amount, account=account, side=side)
-    #         elif isinstance(value, list):
-    #             ''' Get account field (unspecified) '''
-    #             self._cmd.poutput(f'MANUAL ACCOUNT ENTRIES')
-    #             for number, _ in enumerate(repeat(True), 1):
-    #                 self._cmd.poutput(f' {str.rjust(str(number), 2)}. {key} Entry:')
-    #                 account_text = self._cmd.read_input(f'      Name/Tag = ')
-    #                 side_text = self._cmd.read_input(f'      Side = ', completion_mode=CompletionMode.CUSTOM , choices=['Dr', 'Cr'])
-    #                 amount_text = self._cmd.read_input(f'      Amount = ', )
-    #                 if not account_text and not side_text and not amount_text:
-    #                     break
-    #                 account = accounting_system.get_account(account_text)
-    #                 if side_text == "Dr":
-    #                     side = AccountSide.DEBIT
-    #                 elif side_text == "Cr":
-    #                     side = AccountSide.CREDIT
-    #                 else:
-    #                     ValueError("Incorrect account side argument. Expecting: 'Dr' or 'Cr'")
-    #                 raw_amount = account.currency.amount2raw(amount_text)                    
-    #                 journal_entry.add_record(key, raw_amount, account=account, side=side)
-    #         else:
-    #             ValueError(f"Incorrect type of {key} field")
-    #     accounting_system.add_journal_entry(journal_entry)
-    #     head = f'------ New {journal_tag} entry ------'
-    #     self._cmd.poutput(head)
-    #     self.puts_journal_entry(journal_entry)
-    #     self._cmd.poutput('-' * len(head))
-
-
-
-    create2_entry_parser = cmd2.Cmd2ArgumentParser()
-    create2_entry_parser.add_argument('journal', help="Journal tag")
-    create2_entry_parser.add_argument('date', help="Local date and (optional) time in form 'RRRR-MM-DD hh:mm:ss' (i.e 2023-11-23 11:57:24) or one of the following phrases:\n    'now', 'today', 'prev_month_last_day', 'this_month_last_day', 'next_month_last_day'")
-    create2_entry_parser.add_argument('description', help='transaction description, i.e "Purchase of materials"') 
-    create2_entry_parser.add_argument('-ref', '--reference', default=None)
-    create2_entry_parser.add_argument('-token', '--token', default=None, help="Secure token to seal commands stored in script. ")
-    create2_entry_parser.add_argument('fields', nargs=(2,), help='debit/credit entry or info data in order of apperance in the journal. One of the following formats "Amount" (i.e 100.00) or "Account/Amount" (i.e 450/100.00) or "Side/Account/Amount" (i.e Dr/450/100.00) or "Some text" (for info fields)')
 
     def fill_entry_fields(self, journal_entry: JournalEntry, field_data_list):
         def parse_field_data(field_str: str) -> tuple:
@@ -670,6 +589,14 @@ class LoadableEntries(CommandSet):
                 return input
         return moment.isoformat(sep=' ')
 
+    create2_entry_parser = cmd2.Cmd2ArgumentParser()
+    create2_entry_parser.add_argument('journal', help="Journal tag")
+    create2_entry_parser.add_argument('date', help="Local date and (optional) time in form 'RRRR-MM-DD hh:mm:ss' (i.e 2023-11-23 11:57:24) or one of the following phrases:\n    'now', 'today', 'prev_month_last_day', 'this_month_last_day', 'next_month_last_day'")
+    create2_entry_parser.add_argument('description', help='transaction description, i.e "Purchase of materials"') 
+    create2_entry_parser.add_argument('-ref', '--reference', default=None)
+    create2_entry_parser.add_argument('-token', '--token', default=None, help="Secure token to seal commands stored in script. ")
+    create2_entry_parser.add_argument('fields', nargs=(2,), help='debit/credit entry or info data in order of apperance in the journal. One of the following formats "Amount" (i.e 100.00) or "Account/Amount" (i.e 450/100.00) or "Side/Account/Amount" (i.e Dr/450/100.00) or "Some text" (for info fields)')
+
     @cmd2.as_subcommand_to('create', 'entry', create2_entry_parser)
     def create_entry(self, ns: argparse.Namespace):
         # preparing command
@@ -708,9 +635,56 @@ class LoadableEntries(CommandSet):
             je = accounting_system.get_journal_entry(None, sid=sid)
             self._cmd.poutput(je.full_str())
 
-    @cmd2.as_subcommand_to('update', 'entry', rud_entry_parser)
+    update_entry_parser = cmd2.Cmd2ArgumentParser()
+    update_entry_parser.add_argument('-sid', help="Journal Entry (j/e) SID", required=True)
+    update_entry_parser.add_argument('-date', '--date', 
+help=
+'''Local date and (optional) time in form 'RRRR-MM-DD hh:mm:ss' 
+   (i.e 2023-11-23 11:57:24)
+   or one of the following phrases:
+    
+    NOW, TODAY, YESTERDAY, TOMORROW
+
+    FDPY, LDPY, LSPY (First Day / Last Day / Last Second of Previous Year),
+    FDTY, LDTY, LSTY  (.. of This Year),
+    FDNY, LDNY, LSNY  (.. of Next Year),
+
+    FDPM, LDPM, LSPM (First Day/Last Day/Last Second of Previous Month),
+    FDTM, LDTM, LSTM  (.. of This Month),
+    FDNM, LDNM, LSNM  (.. of Next Month)
+    ''')
+    update_entry_parser.add_argument('-desc', '--description', help='transaction description, i.e "Purchase of materials"') 
+    update_entry_parser.add_argument('-ref', '--reference', default=None)
+    update_entry_parser.add_argument('-token', '--token', default=None, help="Secure token to seal commands stored in script. ")
+
+    @cmd2.as_subcommand_to('update', 'entry', update_entry_parser)
     def update_entry(self, ns: argparse.Namespace):
-        self._cmd.poutput('updateing entry (if not closed)....')
+        je = accounting_system.get_journal_entry(sid=ns.sid)
+        if not je:
+            raise ValueError(f"Journal Entry {ns.sid} not found")
+        if je.post:
+            raise ValueError(f"Journal Entry {ns.sid} is posted and cannot be updated.")
+        # execute command
+        if ns.date:
+            je.del_from_journal() # remove this j/e from the journal (je.date is part of sorting key in journal collection)
+            date = datetime_str(ns.date)
+            je.date = date
+            je.put_into_journal() # insert this j/e back into the journal (with new key)
+        if ns.description:
+            je.description = ns.description
+        if ns.reference:
+            je.reference = ns.reference
+        # store command
+        command_args = []
+        command_args.extend(["update", "entry"])
+        command_args.extend(['-sid', str(je.sid)])
+        if ns.date:
+            command_args.extend(["-date", je.date])
+        if ns.description:
+            command_args.extend(["-desc", je.description])
+        if ns.reference:
+            command_args.extend(["-ref", je.reference])
+        store_command(self._cmd, command_args, ns.token, je.full_str())
 
     @cmd2.as_subcommand_to('delete', 'entry', rud_entry_parser)
     def delete_entry(self, ns: argparse.Namespace):

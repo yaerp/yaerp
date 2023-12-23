@@ -1,59 +1,45 @@
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 3a4a938ff3539e59
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token a9668ea26c411b8f
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token ae0d15e9a04e3d66
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token b17999c78a1a227e
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token f9f0d75616fa91bf
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token dac3cded9e2d56e5
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 9061bfec764f241b
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 3083da3f362c2708
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 6f1333c06c1de1bf
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 52d3ff7b5d780dbe
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 836f7aa36f91a96b
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 1312292825c6a6b6
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 1c4657cc15a5e741
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token f9a0b914e9404994
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token a13fb9a6e98ad1eb
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 59e1a8379b6006e9
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 2d34e5a966eb7b78
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 1ebf524f63402ee7
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token ea2628048f9c9ef4
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token c564ec6ebbfd1ef9
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token dbf1170d27338182
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 1c2746ee9c35e3b4
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 5c39da18ef041ffd
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 2b3efdcc33421143
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 1c1236a211a9622a
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 4d6a3a70d6d135e4
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token cc1465bc871b2a2d
-create entry SJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/100 Cr/200/7 */270/* --token c15bda265066609e
-create entry SJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/100 Cr/200/7 */270/* --token 33bb3bbc26c7a6ff
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 4c6e87205cb45459
-create entry SJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/100 Cr/200/7 */270/* --token 6c1efff0c6bac4b7
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 7db0f1a48a2ba8b2
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token b4958ef12700c01f
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token c5b983c436f6f613
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 904f94f25bd590c9
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token bd93ebf92b1b4e56
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token d7e7b8e712446782
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token f158a69ef129eb7d
-create entry SJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/100 Cr/200/7 */270/* --token c2f90d255f6b4786
-create entry SJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/100 Cr/200/7 */270/* --token eca49fdb2ce0ca95
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 1728579ad272f661
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 4f26c3db7b1e581c
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 59193ed336dd7be9
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 1dc53f9130ead5d8
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 45ed7208bcfdbe10
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 0f7b1f45f72d6f01
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 3ad374bff428b54d
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token b0f240e2e3b2a299
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 8a0ea3d0da5c9d7f
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 9695937ec0637263
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token fb481a74a4c08e6c
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 967bb608f571cd66
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token d671b6f20534dc08
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 */270/* --token 95b1606e1bf0a651
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 Cr/270/6 --token 430185d0bb032a72
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 Cr/270/6 --token 636608be2e6a3bd4
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 Cr/270/6 --token b99e7afa0e82112c
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 Cr/270/6 --token 221170eafc5e8515
-create entry GJ "2023-12-11 19:03:24.449682+01:00" "Zakup Komputera" Dr/130/1 Cr/200/7 Cr/270/6 --token 43b9aafca986b77f
+create entry SJ "2023-12-17 17:44:43+01:00" "Zakup Komputera 1" Dr/130/100 Cr/200/90 Cr/270/10 --token 0001_5d82aeeec8ac052d27d2f401
+create entry SJ "2023-12-16 00:00:00+01:00" "Zakup Komputera 2" Dr/130/100 Cr/200/90 Cr/270/10 --token 0002_bf627b58b738b0523c6d4067
+create entry GJ "2023-12-31 00:00:00+01:00" "Zakup Komputera 3" Dr/130/100 Cr/200/90 Cr/270/10 --token 0003_2d6346ad749c3c6aab08c709
+create entry GJ "2023-12-31 23:59:59+01:00" "Zakup Komputera 3" Dr/130/100 Cr/200/90 Cr/270/10 --token 0004_941b7fbfd81ac8ada9f298de
+close entry -j GJ 3 --token 0005_37712f905435596c99d27148
+close entry -j SJ 2 --token 0006_5f1a5718bccb1b1e0009e261
+close entry 4 --token 0007_8cba7fe1798c9c4a8b88ea36
+create entry SJ "2023-12-18 12:46:20+01:00" Zabawki /130/100 /200/90 /270/10 --token 0008_2efd5d193d82da5f0f83b6da
+close entry 8 --token 0009_15554ac9452f166661b1b761
+create entry SJ "2023-12-18 12:56:09+01:00" Zabawki /130/100 /200/90 /270/10 --token 0010_a513a6191cd2a6aedc7db771
+create entry SJ "2023-12-18 13:50:17+01:00" Klocki /100/5 //4 // --token 0011_d876ed1182f168c762315468
+cancel entry 2 --token 0012_2af74ad63625400d8b013a16
+cancel entry 8 --token 0013_177cdebf9f416f8eef7509d6
+cancel entry 3 --token 0014_d8f72753f1c2d4cc8100b0ac
+cancel entry -m REVERSE 4 --token 0015_b1976d834dae23f50883193e
+cancel entry 0001 --token 0016_1c6a553efcd32b18d068c8f0
+close entry 11 --token 0017_3a8521b3f6f28b5f0a7ad495
+cancel entry 11 --token 0018_3e3a9f741b22e0cfbc6d5d56
+create account --tag 514-14 --currency PLN --ledger GL --name Komórka --markers ASSETS STOCK --token 0019_90b9cc8af40710999460288c
+create account --tag 514-15 --currency PLN --ledger GL --name Komórka --parent 514-14 --token 0020_74f9a451131848de2c6796fb
+update account --tag 100 --markers STOCK ASSETS --token 0021_ec845a598603745e2564e40d
+update account --tag 100-1 --markers STOCK ASSETS EXPENSES --token 0022_8502edf20e918401f37102bb
+update account --tag 100-1 --del-markers STOCK --token 0023_70f042b448fc93dceb90a0b7
+update account --tag 100-1 --add-markers STOCK --token 0024_c22dc0a4d23d6337d074251d
+update account --tag 100-1 --add-markers STOCK --token 0025_5c2d1729b4c618218c1c54c7
+create account --tag 100-1-1 --currency PLN --ledger GL --name Allegro.cz --parent 100-1 --token 0026_52f73dee1e5496fec2e30545
+update account --tag 100-1 --add-markers STOCK --del-markers STOCK --token 0027_095a9c3f5c5254f23ac81b02
+update account --tag 100-1 --add-markers EXPENSES --del-markers STOCK --token 0028_c1bec81155c15ccec57be6b1
+update account --tag 100-1 --add-markers EXPENSES --del-markers STOCK --token 0029_99989b7e99a39a1704d6c774
+update account --tag 100-1 --add-markers EXPENSES --del-markers EXPENSES STOCK --token 0030_4be25f85cbb5ccc8653a6bce
+update account --tag 100-1 --add-markers EXPENSES STOCK --del-markers EXPENSES STOCK --token 0031_86bda3b0f299951f840c41a4
+update account --tag 100-1 --add-markers EXPENSES STOCK --del-markers EXPENSES --token 0032_3ae9aab620a237c527418d31
+update account --tag 100 --add-markers EXPENSES STOCK --del-markers EXPENSES --token 0033_84511f0a5ce25835280aab3d
+update account --tag 100 --add-markers STOCK --del-markers EXPENSES --token 0034_98dbd3013c936d229f94bc8d
+create entry GJ "2013-12-12 01:01:01" "Zakup akwarioum" Dr/400/100.00 Cr/200/100.00 --token 0035_92cffb0edfb5dd74428d9cc6
+update entry -sid 13 -desc OK --token 0036_f84f96cdc4a03836e624e4b3
+update entry -sid 13 -date "2023-12-23 23:41:48+01:00" --token 0037_f94be918967c4a4c845592e3
+update entry -sid 13 -date "2023-12-23 23:42:15+01:00" --token 0038_0b8ebfe4476884cc79481f2a
+update account --tag 100 --add-markers STOCK --del-markers EXPENSES --token 0039_d0a58e95975c283c62597d23
+update entry -sid 13 -date "2023-12-24 00:00:00+01:00" --token 0040_484677569b1e872490880ad6
+update entry -sid 13 -date "2023-12-24 00:00:00+01:00" --token 0041_9dd1fce0a11ad69ac52b0f2d
+update entry -sid 13 -date LMPY --token 0042_a78ed22c210686577b6bd120
+update entry -sid 13 -date "2022-12-31 00:00:00+01:00" --token 0043_ed3e41937b90d602fd3b3ddb
+update entry -sid 13 -date "2024-12-31 00:00:00+01:00" --token 0044_30beba25edd0723c25edd7c6
+update entry -sid 13 -date "2022-12-31 00:00:00+01:00" --token 0045_bf7b17cb285a779fa87a8713
