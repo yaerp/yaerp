@@ -6,7 +6,7 @@ from dateutil.relativedelta import *
 from itertools import repeat
 import cmd2
 from cmd2 import CommandSet, CompletionMode, with_argparser, with_category, with_default_category, ansi
-from accounting_system3 import setup_tiny_accounting_system
+from accounting_system3 import empty_accounting_system, setup_tiny_accounting_system
 from yaerp.accounting.account3 import AccountRecord, AccountSide
 from yaerp.accounting.journal3 import Journal, JournalEntry
 from yaerp.accounting.marker import Marker
@@ -18,14 +18,6 @@ from yaerp.tools.sid import SID
 from yaerp.tools.text import dict_to_str, iter_to_str
 
 accounting_system = None
-# sec_token = ''
-
-# def update_sec_token(command_args):
-#     h = blake2s(digest_size=8)
-#     h.update(globals()["sec_token"].encode())
-#     for arg in command_args:
-#         h.update(arg.encode())
-#     return h.hexdigest()
 
 prompt_part_1 = ""
 prompt_part_2 = ""
@@ -51,7 +43,9 @@ def store_command(cmd, command_args, token_from_file, output_info):
         # If interactive session:
         cmd.poutput(output_info)
 
-        with append_file("commands.txt") as comm:
+        file_name = f"{globals()['session_name']}.ac"
+
+        with append_file(file_name) as comm:
             comm.extend(command_args)
             comm.extend(['--token', secure_token().token()])
     else:
@@ -254,7 +248,7 @@ class LoadableAccounts(CommandSet):
 
     account_parser = cmd2.Cmd2ArgumentParser()
     account_parser.add_argument('-t', '--tag', required=False)
-    account_parser.add_argument('-n', '--name', required=False)  
+    account_parser.add_argument('-n', '--name', required=False)
 
     @cmd2.as_subcommand_to('read', 'account', account_parser)
     def read_account(self, ns: argparse.Namespace):
@@ -328,8 +322,8 @@ class LoadableAccounts(CommandSet):
             if ns.new_tag in accounting_system.accounts.keys():
                 raise ValueError(f'New tag found in existing Account "{ns.new_tag}"')
             ac.tag = ns.new_tag
-            accounting_system.accounts[ac.tag] = ac   
-            ac = accounting_system.get_account(ns.new_tag)                     
+            accounting_system.accounts[ac.tag] = ac
+            ac = accounting_system.get_account(ns.new_tag)
             del accounting_system.accounts[ns.tag]
             if not ac:
                 raise ValueError("cannot get account with changed tag")
@@ -1062,18 +1056,31 @@ class ExampleApp(cmd2.Cmd):
 
 if __name__ == '__main__':
     import sys
+
+    if len(sys.argv) == 1:
+        startup_script = "default.ac"
+    elif len(sys.argv) == 2:
+        startup_script = sys.argv[1]
+        if not startup_script.lower().endswith(".ac"):
+            startup_script += ".ac"
+    else:
+        raise ValueError('Expecting empty or one argument (startup text file)')
+
     secure_token(open_number=True)
     app = ExampleApp(include_py=True, include_ipy=True, 
-                    startup_script='commands.txt',
-                    persistent_history_file='ac_history.dat')
+                    startup_script=startup_script,
+                    persistent_history_file='history.dat',
+                    allow_cli_args=False)
     app.self_in_py = True  # Enable access to "self" within the py command
     app.debug = True  # Show traceback if/when an exception occurs
-    accounting_system = setup_tiny_accounting_system()
+    accounting_system = empty_accounting_system()
     # load_state(accounting_system)
 
-    set_prompt_part_1(accounting_system.selected["period"])
-    set_prompt_part_2(accounting_system.selected["journal"])
-    app.prompt = prompt
+    # set_prompt_part_1(accounting_system.selected["period"])
+    # set_prompt_part_2(accounting_system.selected["journal"])
+    # app.prompt = prompt
+    globals()['session_name'] = startup_script.removesuffix('.ac')
+    app.prompt = globals()['session_name'] + '> '
 
     app.cmdloop(f"Accounting Commander")
 

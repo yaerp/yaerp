@@ -399,3 +399,83 @@ def setup_tiny_accounting_system() -> AccountingSystem:
         "chart-of-accounts": "main"
     }
     return accsys
+
+def empty_accounting_system() -> AccountingSystem:
+    accsys = AccountingSystem()
+    accsys.general_ledger = GeneralLedger()
+    accsys.currencies = {
+                "EUR": Currency('EUR', '978', 100, "Euro", '€', 'c'),
+                "PLN": Currency('PLN', '985', 100, "Polish Złoty", 'zł', 'gr'),
+                "USD": Currency('USD', '840', 100, "US Dollar", '$', 'c'),
+    }
+    accsys.accounts = {
+            # '100': Account('100', accsys.general_ledger, accsys.currencies["PLN"], "Receivables"),
+    }
+
+    # class SaleJournal(Journal):
+
+    #     def initialize_fields(self, journal_entry):
+    #         return {
+    #             'Cash': AccountRecord(accsys.accounts["110"], 0, AccountSide.Dr, journal_entry, None),
+    #             'Sale': AccountRecord(accsys.accounts["400"], 0, AccountSide.Cr, journal_entry, None),
+    #             'Tax': AccountRecord(accsys.accounts["270"], 0, AccountSide.Cr, journal_entry, None),
+    #         }  
+    # sale_journal = SaleJournal("SJ", "Sale Journal", ledger=accsys.general_ledger)
+    # class PurchaseJournal(Journal):
+
+    #     def initialize_fields(self, journal_entry):
+    #         return {
+    #             "Informaton": None,
+    #             'Payables': AccountRecord(accsys.accounts["200"], 0, AccountSide.Dr, journal_entry, None),
+    #             'Cash': AccountRecord(accsys.accounts["110"], 0, AccountSide.Cr, journal_entry, None),
+    #         }
+    # purchase_journal = PurchaseJournal("PJ", "Purchase Journal", ledger=accsys.general_ledger)
+    accsys.journals = {
+            GeneralJournal().tag: GeneralJournal(),
+            # sale_journal.tag: sale_journal,
+            # purchase_journal.tag: purchase_journal,
+        }
+    root = AccountTree(None, None)
+    # assets = AccountTree(accsys.accounts["1"], root)
+    # receivables = AccountTree(accsys.accounts["100"], assets)
+    # AccountTree(accsys.accounts["100-1"], receivables)
+    # AccountTree(accsys.accounts["110"], assets)
+    # AccountTree(accsys.accounts["120"], assets)
+    # stock = AccountTree(accsys.accounts["130"], assets)
+    # AccountTree(accsys.accounts["131"], stock)
+    # AccountTree(accsys.accounts["132"], stock)
+    # AccountTree(accsys.accounts["140"], assets)
+    # AccountTree(accsys.accounts["170"], assets)
+
+    # liabilities = AccountTree(accsys.accounts["2"], root)
+    # payables = AccountTree(accsys.accounts["200"], liabilities)
+    # AccountTree(accsys.accounts["200-1"], payables)
+    # AccountTree(accsys.accounts["270"], liabilities)
+
+    # equity = AccountTree(accsys.accounts["3"], root)
+    # AccountTree(accsys.accounts["300"], equity)
+    # AccountTree(accsys.accounts["310"], equity)
+
+    # revenues = AccountTree(accsys.accounts["4"], root)
+    # AccountTree(accsys.accounts["400"], revenues)
+    # AccountTree(accsys.accounts["410"], revenues)
+
+    # expenses = AccountTree(accsys.accounts["5"], root)
+    # AccountTree(accsys.accounts["500"], expenses)
+    # opex = AccountTree(accsys.accounts["510"], expenses)
+    # AccountTree(accsys.accounts["511"], opex)
+    # AccountTree(accsys.accounts["512"], opex)
+    # AccountTree(accsys.accounts["513"], opex)
+    # AccountTree(accsys.accounts["514"], opex)
+    accsys.coa = root # Chart of Accounts
+    # accsys.charts_of_accounts = {"main": root}
+    # accsys.selected = {
+    #     "account": "110",
+    #     "journal": "SJ",
+    #     "currency": "PLN",
+    #     "date": "today",
+    #     "time": "now",
+    #     "period": "2023-11",
+    #     "chart-of-accounts": "main"
+    # }
+    return accsys

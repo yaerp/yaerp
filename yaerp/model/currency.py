@@ -112,6 +112,12 @@ class Currency(Metric):
 
     def __str__(self) -> str:
         return self.symbol
+    
+    def toStringForm(self, internal_value, /, *params):
+        return self.raw2amount(internal_value, *params)
+    
+    def toInternalForm(self, external_value, /, *params):
+        return self.amount2raw(external_value, *params)
 
 
 if __name__ == '__main__':

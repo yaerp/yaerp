@@ -139,7 +139,7 @@ def run():
         yield entry5
         yield entry6
 
-    print(render_journal_entries2(entries(), layout=render_layout['terminal-120-3']))
+    print(render_journal_entries2(entries(), layout=render_layout['terminal-80-2']))
 
 
     currency = Currency('PLN', '985', 100, 'Polski Złoty', 'zł', 'gr',

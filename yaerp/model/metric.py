@@ -9,3 +9,9 @@ class Metric:
         self.name = name
         self.symbol = symbol
         self.definition = definition
+
+    def toStringForm(self, internal_value, /, *params):
+        raise NotImplementedError()
+
+    def toInternalForm(self, external_value, /, *params):
+        raise NotImplementedError()

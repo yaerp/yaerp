@@ -110,5 +110,9 @@ def run():
     print(sec_tok.update("hsdfgjgsf"))
     print(secure_token().token())
 
+    print()
+    print(account100.currency.toStringForm(account100.get_balance()))
+    print(account100.currency.toInternalForm(3554548.42))
+
 if __name__ == "__main__":
     run()

@@ -43,3 +43,4 @@ update entry -sid 13 -date LMPY --token 0042_a78ed22c210686577b6bd120
 update entry -sid 13 -date "2022-12-31 00:00:00+01:00" --token 0043_ed3e41937b90d602fd3b3ddb
 update entry -sid 13 -date "2024-12-31 00:00:00+01:00" --token 0044_30beba25edd0723c25edd7c6
 update entry -sid 13 -date "2022-12-31 00:00:00+01:00" --token 0045_bf7b17cb285a779fa87a8713
+create account --tag 101 --currency PLN --ledger GL --name Stock --token 0001_3a99fc93f211614d1b79ba28

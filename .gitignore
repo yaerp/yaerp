@@ -131,4 +131,5 @@ dmypy.json
 .vscode/
 out.txt
 commands.txt
-ac_history.dat
+*.dat
+*.ac

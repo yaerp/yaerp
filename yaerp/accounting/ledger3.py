@@ -28,6 +28,12 @@ class Ledger:
         for je in self.journal_entries_gen(posted, not_posted, date_beg, date_end):
             yield from je.account_records_gen(side, account)
 
+    def get_account(self, account_tag):
+        return self.accounts[account_tag]
+    
+    def get_journal(self, journal_tag):
+        return self.journals[journal_tag]
+
     def post_journal_entry(self, journal, journal_entry, define_post_id=None):
         self.__validate_journal_entry(journal, journal_entry)
         if journal_entry.is_zeroed():
