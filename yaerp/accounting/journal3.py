@@ -36,7 +36,7 @@ class Journal:
         self.name = name
         self.ledger = ledger
         if ledger:
-            ledger.register_journal(self)       
+            ledger.register_journal(self)
         self.journal_entries = SortedCollection([], key=operator.attrgetter('date', 'time', 'sid'))
 
     def post_these(self, draft_journal_entries):

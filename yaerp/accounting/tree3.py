@@ -1,8 +1,10 @@
 from functools import reduce
 from itertools import chain
+import operator
 
 from yaerp.accounting.account3 import Account
 from yaerp.accounting.marker import Marker
+from yaerp.tools.sorted_collection import SortedCollection
 
 
 class AccountTree():
@@ -16,18 +18,24 @@ class AccountTree():
         if account is not None and parent is not None:
             if parent.get_root_node().get_node(tag=account.tag, guid=account.guid) is not None:
                 raise ValueError('Error. Account {} already exist in parent tree. '.format(account))
+        self.account = account        
         # make this instance as parent's child
         if parent is not None:
             parent.append_child(self)
-        self.account = account
         self.parent = parent # AccountTree object or None (if "self" is root node)
-        self.children = None # list of AccountTree objects
+        self.children = None # collection of AccountTree objects
         self.marker = Marker() # 
 
     def append_child(self, child):
+
+        def sorting_key(x: AccountTree):
+            if x.account:
+                return x.account.tag
+            return ''
+
         if self.children is None:
-            self.children = list()
-        self.children.append(child)
+            self.children = SortedCollection([], key=sorting_key)
+        self.children.insert(child)
 
     def add_marks(self, *marks):
         for mark in marks:

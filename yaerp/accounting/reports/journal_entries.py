@@ -1,6 +1,6 @@
 from yaerp.accounting.journal import Journal
-from yaerp.accounting.journal_entry import JournalEntry
-from yaerp.accounting.account_entry import AccountEntry
+# from yaerp.accounting.journal_entry import JournalEntry
+# from yaerp.accounting.account_entry import AccountEntry
 
 
 def transaction_sheet_header(journal):

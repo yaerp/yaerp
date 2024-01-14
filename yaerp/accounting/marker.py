@@ -72,19 +72,21 @@ class Expenses(Mark):
 class Clearing(Mark):
     ''' Clearing Accounts (track and reconcile transactions in process) '''
 
+    CLEARING_ACCOUNT = 970 # uniwersalne konto rozliczeń
+
     ASSET_CLEARING_ACCOUNT = 971  # rozliczenie naleznosci 
     ''' "Asset Clearing Account" \n
     Usually used for collecting and tracking the partial payments toward a specific invoice(s).
     Example:
     - 1. the payment received, 100$
-            - Dr( bank a/c ) Cr( clearing a/c )
+            - Dr( bank a/c ) Cr( this )
     - 2. the invoice for the customer issued, 300$
-            - Dr( clearing a/c ) Cr( customer a/c )
+            - Dr( this ) Cr( customer a/c )
     - 3. the payment received, 100$
-            - Dr( bank a/c ) Cr( clearing a/c )
+            - Dr( bank a/c ) Cr( this )
     - 4. the last payment received 100$
-            - Dr( bank a/c ) Cr( clearing a/c )  
-    - 5. the clearing a/c is balanced - the transaction is done
+            - Dr( bank a/c ) Cr( this )  
+    - 5. the clearing a/c (this) is balanced - the transaction is done
     '''
     
     LIABILITY_CLEARING_ACCOUNT = 972  # rozliczenie zobowiazania
@@ -93,16 +95,16 @@ class Clearing(Mark):
     Example:
     - 1. new project just started, 
     - 2. the $100 bill received from the contractor
-        - Dr( project a/c ) Cr( clearing a/c )
+        - Dr( project a/c ) Cr( this )
     - 3. the first payment, $150 was sent to the contractor
-        - Dr( clearing a/c ) Cr( bank a/c )    
+        - Dr( this ) Cr( bank a/c )    
     - 4. the $200 invoice received from the contractor
-        - Dr( project a/c ) Cr( clearing a/c )
+        - Dr( project a/c ) Cr( this )
     - 5. the $12 final bill received from the contractor
-        - Dr( project a/c ) Cr( clearing a/c )
+        - Dr( project a/c ) Cr( this )
     - 6. the final payment, $162 was send to the contractor
-        - Dr( clearing a/c ) Cr( bank a/c )
-    - 7. the clearing a/c is balanced and the project should be ready
+        - Dr( this ) Cr( bank a/c )
+    - 7. the clearing a/c (this) is balanced and the project should be ready
     '''
     
     PURCHASE_CLEARING_ACCOUNT = 973  # rozliczenie zakupu
@@ -160,17 +162,9 @@ class Maintenance(Mark):
 class Marker:
 
     @classmethod
-    def get_mark_classes(cls):
-        return [
-                BalanceSheet, IncomeStatement,
-                Assets, Liabilities, Equity, Revenues, Expenses,
-                Clearing, Maintenance,
-        ]
-
-    @classmethod
     def instance_mark_by_name(cls, mark_name, mark_classes = None):
         if not mark_classes:
-            mark_classes = Marker.get_mark_classes()
+            mark_classes = Mark.__subclasses__()
         for m_cls in mark_classes:
             marker_instance = m_cls.get_by_name(mark_name)
             if marker_instance:
@@ -178,7 +172,6 @@ class Marker:
         raise ValueError(f'Not recognized member {mark_name}')
 
     def __init__(self, *mark_container):
-        # self.marks = set(mark_container) 
         self._marks = set()       
         for mark in mark_container:
             self.add(mark)
@@ -192,11 +185,11 @@ class Marker:
         self._marks = set.union(self._marks, set(new_marks))
 
     def add_by_name(self, mark_name: str, mark_classes = None):
-        marker_instance = Mark.instance_mark_by_name(mark_name, mark_classes=mark_classes)
+        marker_instance = Marker.instance_mark_by_name(mark_name, mark_classes=mark_classes)
         self.add(marker_instance)
 
     def remove_by_name(self, mark_name: str, mark_classes = None):
-        marker_instance = Mark.instance_mark_by_name(mark_name, mark_classes=mark_classes)
+        marker_instance = Marker.instance_mark_by_name(mark_name, mark_classes=mark_classes)
         self.remove(marker_instance)
 
     def remove(self, mark):
@@ -239,6 +232,59 @@ class Marker:
     
     def __eq__(self, other):
         return len(self._marks) == len(self._marks.intersection(other))
+
+    def __add__(a, b):
+        result = Marker(*a.to_list())
+        if isinstance(b, tuple(Mark.__subclasses__())):
+            result.add(b)
+        elif isinstance(b, Marker):
+            result.extend(b.to_list())
+        else:
+            raise ValueError('Expected Mark subclass or Marker class')
+        return result
+
+    def __radd__(a, b):
+        tmp = Marker()
+        tmp.add(b)
+        return Marker.__add__(tmp, a)
+
+    def __sub__(a, b):
+        result = Marker(*a.to_list())
+        if isinstance(b, tuple(Mark.__subclasses__())):
+            if result.has(b):
+                result.remove(b)
+        elif isinstance(b, Marker):
+            result.reduce(b.to_list())
+        else:
+            raise ValueError('Expected Mark subclass or Marker class')
+        return result
+
+    def __rsub__(a, b):
+        tmp = Marker()
+        tmp.add(b)
+        return Marker.__sub__(tmp, a)
+
+    def __iadd__(a, b):
+        if isinstance(b, tuple(Mark.__subclasses__())):
+            a.add(b)
+        else:
+            raise ValueError()
+        return a
+
+    def __isub__(a, b):
+        if isinstance(b, tuple(Mark.__subclasses__())):
+            if a.has(b):
+                a.remove(b)
+        elif isinstance(b, Mark.__class__):
+            a.remove_type(b)
+        else:
+            raise ValueError()
+        return a
+
+    def __contains__(a, b): # "b in a"
+        if isinstance(a, tuple(Mark.__subclasses__())):
+            return a.has(b)
+        return a.has_type(b)
 
 
 class PropertyContainer:
@@ -286,24 +332,18 @@ class PropertyContainer:
 
     def has_value(self, property: Mark, value: Mark):
         return value in self._values[property]
-        # return {value}.issubset(self._values[property])
 
     def has_all_of_values(self, property, *values):
         for value in values:
             if value not in self._values[property]:
                 return False
         return True
-        # return set(values).issubset(self._values[property])
 
     def has_any_of_value(self, property, *values):
         for value in values:
             if value in self._values[property]:
                 return True
         return False
-        # for m in values:
-        #     if {m}.issubset(self._values[property]):
-        #         return True
-        # return False
 
     def has_type(self, property, *_class):
         for mark in self._values[property]:
@@ -318,9 +358,20 @@ class PropertyContainer:
     #     return len(self._markers.values()) == len(set(other._markers.values()).intersection(other))
 
 
-# if __name__ == "__main__":
-#     m = Marker(BalanceSheet.ASSETS, Assets.CASH)
-#     m.add_by_name("PAYABLES")
-#     print(m.has_type(Assets, BalanceSheet))
-#     print(m.has(Liabilities.PAYABLES))
+if __name__ == "__main__":
+    m = Marker(BalanceSheet.ASSETS, Assets.CASH)
+    # m.add_by_name("PAYABLES")
+    print(m.has_type(Assets, BalanceSheet))
+    print(m.has(Liabilities.PAYABLES))
 
+    res = m
+    res += Clearing.PURCHASE_CLEARING_ACCOUNT
+    res -= Clearing.PURCHASE_CLEARING_ACCOUNT
+    # res -= Assets
+    print(Assets in res)
+
+    new_res = Liabilities.PAYABLES - res
+    print(new_res.to_list())
+
+    # print(Marker.get_mark_classes())
+    # print(Mark.__subclasses__())

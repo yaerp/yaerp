@@ -1,5 +1,5 @@
 
-from accounting_system import AccountingSystem, setup_tiny_accounting_system
+from acc_sys import AccountingSystem, setup_tiny_accounting_system
 from yaerp.accounting.lib import AccountTypes, GeneralJournal, GeneralLedger
 from yaerp.accounting.ledger3 import Ledger
 from yaerp.accounting.journal3 import Journal
@@ -62,7 +62,7 @@ def run():
     entry2.add_record("Sale", 355330000)
     entry2.add_record("Cash", 355330000)
     entry2.put_into_journal()
-    entry2.post_this()
+    # entry2.post_this()
 
     entry3 = JournalEntry(journal=sale_journal)
     entry3.date = '2023-01-03'
@@ -78,7 +78,7 @@ def run():
     entry4.credit('Account', 158, account100)
     entry4.debit('Account', 158, account400)
     entry4.put_into_journal()
-    # entry4.post_this()
+    entry4.post_this()
 
     entry5 = JournalEntry(journal=journal)
     entry5.date = '2023-01-04'
@@ -111,8 +111,14 @@ def run():
     print(secure_token().token())
 
     print()
-    print(account100.currency.toStringForm(account100.get_balance()))
-    print(account100.currency.toInternalForm(3554548.42))
+    # print(account100.currency.toStringForm(account100.get_balance()))
+    # print(account100.currency.toInternalForm(3554548.42))
+
+    print(render_journal_entries2((entry2, entry3, entry4), layout=render_layout['default']))
+    # print(render_journal_entry2(entry4,render_layout['2x31']))
+    # print(render_journal_entry2(entry3, layout=render_layout['default']))
+    # print(entry3)
+    # render_journal_entry(entry4)
 
 if __name__ == "__main__":
     run()

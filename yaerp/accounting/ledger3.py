@@ -1,8 +1,6 @@
 import heapq
 import operator
-import uuid
 from yaerp.accounting.account3 import AccountRecord
-# from yaerp.accounting.post import Post
 from yaerp.tools.sid import SID
 from yaerp.tools.sorted_collection import SortedCollection
 
@@ -15,12 +13,14 @@ class Ledger:
         self.tag = tag
         self.name = name
         self.posts = SortedCollection([], key=None) # post register
-        self.accounts = {} # associated accounts
-        self.journals = {} # associated journals
+        self.accounts = SortedCollection([], key=operator.attrgetter('tag')) # associated accounts
+        self.journals = SortedCollection([], key=operator.attrgetter('tag')) # associated journals
 
-    def journal_entries_gen(self, posted=True, not_posted=True, date_beg=None, date_end=None):
+    def journal_entries_gen(self, posted=True, not_posted=True, date_beg=None, date_end=None, only_journal=None):
         sources_of_journal_entries = []
-        for journal in self.journals.values():
+        for journal in self.journals:
+            if only_journal and only_journal != journal:
+                continue
             sources_of_journal_entries.append(journal.journal_entries_gen(posted, not_posted, date_beg, date_end))
         return heapq.merge(*sources_of_journal_entries)
 
@@ -29,10 +29,10 @@ class Ledger:
             yield from je.account_records_gen(side, account)
 
     def get_account(self, account_tag):
-        return self.accounts[account_tag]
-    
+        return self.accounts.find(account_tag)
+
     def get_journal(self, journal_tag):
-        return self.journals[journal_tag]
+        return self.journals.find(journal_tag)
 
     def post_journal_entry(self, journal, journal_entry, define_post_id=None):
         self.__validate_journal_entry(journal, journal_entry)
@@ -76,16 +76,8 @@ class Ledger:
     def __validate_account_record(self, journal, account_record):
         if account_record.raw_amount and not account_record.account:
             raise ValueError('account entry has no parent account')
-        if account_record.account and account_record.account not in self.accounts.values():
+        if account_record.account and account_record.account not in self.accounts:
             raise ValueError(f'account entry has parent account associated with an another ledger. [j/e {account_record.journal_entry.sid}]')
-        # if entry.transaction is None:
-        #     raise ValueError('parent transaction is None')
-        # if entry.transaction.journal is None:
-        #     raise ValueError('parent journal is None')           
-        # if entry.transaction.journal != journal:
-        #     raise ValueError('parent journal should be the same as the posting journal')
-        # if entry.transaction.journal not in self.journals.values():
-            # raise ValueError('parent journal not associated whith this ledger') 
         if account_record.post:
             if account_record.post in self.posts:
                 raise ValueError(f'Posting identifier {SID.print_form(account_record.post)} already exist in the ledger. [j/e {SID.print_form(account_record.journal_entry.sid)}]')
@@ -99,8 +91,10 @@ class Ledger:
         if not account:
             raise ValueError('account is None')  
         if account.ledger and account.ledger != self:
-            raise ValueError('account already associated with an another Ledger')         
-        self.accounts[account.tag] = account
+            raise ValueError('account already associated with an another Ledger')  
+        if account in self.accounts:
+            raise ValueError('account tag already exist in the Ledger')       
+        self.accounts.insert(account)
         account.ledger = self
  
     def register_journal(self, journal):
@@ -108,5 +102,32 @@ class Ledger:
             raise ValueError('journal is None')  
         if journal.ledger and journal.ledger != self:
             raise ValueError('journal already associated with an another Ledger') 
-        self.journals[journal.tag] = journal
+        if journal in self.journals:
+            raise ValueError('journal tag already exist in the Ledger') 
+        self.journals.insert(journal)
         journal.ledger = self
+
+    def unregister_account(self, account):
+        if not account:
+            raise ValueError('account is None')  
+        if account.ledger and account.ledger != self:
+            raise ValueError('account already associated with an another Ledger')  
+        if account not in self.accounts:
+            raise ValueError('account tag not exist in the Ledger')       
+        for je in self.journal_entries_gen():
+            for _ in je.account_records_gen(account=account):
+                raise ValueError('Journal Entry/ies associated with this Account exist in the Ledger') 
+        self.accounts.remove(account)
+        account.ledger = None
+ 
+    def unregister_journal(self, journal):
+        if not journal:
+            raise ValueError('"journal" argument has None value')  
+        if journal.ledger and journal.ledger != self:
+            raise ValueError('Journal already associated with an another Ledger') 
+        if journal not in self.journals:
+            raise ValueError('Journal tag not exist in the Ledger') 
+        for je in journal.journal_entries_gen():
+            raise ValueError('Journal Entry/ies exist in this Journal') 
+        self.journals.remove(journal)
+        journal.ledger = None

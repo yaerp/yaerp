@@ -6,10 +6,11 @@ from dateutil.relativedelta import *
 from itertools import repeat
 import cmd2
 from cmd2 import CommandSet, CompletionMode, with_argparser, with_category, with_default_category, ansi
-from accounting_system3 import empty_accounting_system, setup_tiny_accounting_system
+from acc_sys import empty_accounting_system, setup_tiny_accounting_system
 from yaerp.accounting.account3 import AccountRecord, AccountSide
 from yaerp.accounting.journal3 import Journal, JournalEntry
 from yaerp.accounting.marker import Marker
+from yaerp.accounting.reports.t_account import render_journal_entries2, render_layout
 from yaerp.accounting.tree3 import AccountTree
 from yaerp.tools.dt import datetime_str
 from yaerp.tools.file import append_file
@@ -85,34 +86,54 @@ class LoadableChartsOfAccounts(CommandSet):
         self._cmd.poutput('deleting new chart of accounts: ' + ns.name)
 
     update_coa_parser = cmd2.Cmd2ArgumentParser()
-    update_coa_parser.add_argument('-n', '--name', required=True)
+    # update_coa_parser.add_argument('-n', '--name', required=True)
     update_coa_parser.add_argument('-add', '--add-accounts', required=False, nargs=(1,))
     update_coa_parser.add_argument('-move', '--move-accounts', required=False, nargs=(1,))
     update_coa_parser.add_argument('-p', '--parent-account', required=False)
     update_coa_parser.add_argument('-del', '--del-accounts', required=False, nargs=(1,))
-    update_coa_parser.add_argument('-nn', '--new-name', required=False)
+    update_coa_parser.add_argument('-rename', '--rename-account', required=False, nargs=2)
+    update_coa_parser.add_argument('-token', '--token', default=None, help="Secure token to seal commands stored in script. ")
 
     @cmd2.as_subcommand_to('update', 'chart-of-accounts', update_coa_parser)
     def update_coa(self, ns: argparse.Namespace):
         """Update Charts of Accounts"""
-        coa = accounting_system.get_chart_of_accounts(ns.name)
+        # coa = accounting_system.get_chart_of_accounts(ns.name)
         if ns.add_accounts:
             for ac_tag in ns.add_accounts:
-                accounting_system.add_node(coa_name=ns.name, account_tag=ac_tag, parent_account_tag=ns.parent_account)
+                accounting_system.add_node(coa_name=None, account_tag=ac_tag, parent_account_tag=ns.parent_account)
         if ns.move_accounts:
             for ac_tag in ns.move_accounts:
-                accounting_system.move_node(coa_name=ns.name, account_tag=ac_tag, new_parent_account_tag=ns.parent_account)
+                accounting_system.move_node(coa_name=None, account_tag=ac_tag, new_parent_account_tag=ns.parent_account)
         if ns.del_accounts:
             for ac_tag in ns.del_accounts:
-                accounting_system.delete_node(coa_name=ns.name, account_tag=ac_tag)
+                accounting_system.delete_node(coa_name=None, account_tag=ac_tag)
+        # store command
+        command_args = []
+        command_args.extend(['update', 'chart-of-accounts'])
+        if ns.add_accounts:
+            command_args.append("-add")
+            command_args.extend(ns.add_accounts)
+        if ns.move_accounts:
+            command_args.append("-move")
+            command_args.extend(ns.move_accounts)
+        if ns.del_accounts:
+            command_args.append("-del")
+            command_args.extend(ns.del_accounts)
+        if ns.parent_account:
+            command_args.extend(["-p", ns.parent_account])
+        if ns.rename_account:
+            command_args.extend(ns.rename_account)
+        store_command(self._cmd, command_args, ns.token, 'updated')
 
     list_coa = cmd2.Cmd2ArgumentParser()
     @cmd2.as_subcommand_to('list', 'charts-of-accounts', list_coa)
     def list_coa(self, _: argparse.Namespace):
         txt = []
-        txt.append(f'{" [Tag]":<10} {" [Name]":<26} {"[Sum Dr]":>10}  {"[Sum Cr]":>10}  {"[Sum Balance]":>14}')
+        txt.append(f'{" [Tag]":<10} {" [Name]":<26} {"[Sum Dr]":>10}  {"[Sum Cr]":>10}   {"[Sum Balance]":>14}')
         for node in accounting_system.coa.get_internals_gen():
-            txt.append(' '*len(node.get_node_path()) + node.short_str())
+            path = node.get_node_path()
+            indent = ' '*(len(path)-2)
+            txt.append(f'{indent}{node.short_str()}')
         self._cmd.poutput('\n'.join(txt))
 
 @with_default_category('Journal')
@@ -368,7 +389,8 @@ class LoadableAccounts(CommandSet):
     def list_accounts(self, _: argparse.Namespace):
         txt = []
         txt.append(f'{" [Tag]":<10} {" [Name]":<26} {"[Dr]":>10}  {"[Cr]":>10}  {"[Balance]":>11}')
-        for account in accounting_system.accounts.values():
+        # for account in accounting_system.accounts.values():
+        for account in accounting_system.general_ledger.accounts:
             txt.append(account.short_str())
         self._cmd.poutput('\n'.join(txt))
 
@@ -780,6 +802,8 @@ help=
     list_entries_parser.add_argument('-desc', '--matching-description', default=None, help='text in description')   
     list_entries_parser.add_argument('-ref', '--matching-reference', default=None, help='text in reference')
     list_entries_parser.add_argument('-j', '--journal-symbol', default=None, help='journal')
+    list_entries_parser.add_argument('-sids', nargs=(1,), help='')
+    # list_entries_parser.add_argument()
     @cmd2.as_subcommand_to('list', 'entries', list_entries_parser)
     def list_entries(self, ns: argparse.Namespace):
         # self._cmd.poutput('-SID-  ---Date---  -Status-  Description')
@@ -789,11 +813,28 @@ help=
             ns.matching_date,
             ns.matching_description,
             ns.matching_reference,
-            ns.journal_symbol)
+            ns.journal_symbol,
+            ns.sids)
         number = 0
         for number, entry in enumerate(matching_je_generator, 1):
             self._cmd.poutput(f'{entry}')
         self._cmd.poutput(f'{number} entries found')      
+
+    @cmd2.as_subcommand_to('list', 'T-entries', list_entries_parser)
+    def list_T_entries(self, ns: argparse.Namespace):
+        # self._cmd.poutput('-SID-  ---Date---  -Status-  Description')
+        # self._cmd.poutput(JournalEntry.str_header())
+
+        matching_je_generator = accounting_system.match_journal_entries_gen(
+            ns.matching_date,
+            ns.matching_description,
+            ns.matching_reference,
+            ns.journal_symbol,
+            ns.sids)
+        found_je_list = list(matching_je_generator)
+        # number = 0
+        T_form = render_journal_entries2(found_je_list, layout=render_layout['default'])
+        self._cmd.poutput(T_form)
 
 @with_default_category('Period')
 class LoadablePeriod(CommandSet):

@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from itertools import chain
 import textwrap
 
-from yaerp.accounting.journal import JournalEntry
-from yaerp.accounting.account import AccountRecord, AccountSide
+from yaerp.accounting.journal3 import JournalEntry
+from yaerp.accounting.account3 import Account, AccountRecord, AccountSide
 from yaerp.report.typesetting.columns import simultaneous_column_generator
 
 @dataclass
@@ -22,6 +22,7 @@ render_layout = {
     "1x75": RenderParameters(73, 18, 1, 0, 0),
     "2x31": RenderParameters(29, 8, 2, 2, 0),  
     "2x39": RenderParameters(37, 12, 2, 2, 0),
+    "default": RenderParameters(37, 12, 2, 4, 0),
     "terminal-80-2": RenderParameters(37, 12, 2, 4, 0),
     "2x57": RenderParameters(55, 18, 2, 2, 0),
     "terminal-120-2": RenderParameters(55, 18, 2, 7, 0),
@@ -233,7 +234,7 @@ def render_journal_entry(entry: JournalEntry, col=2, col_len=37):
     account_set = set(field.account for field in entry.fields.values() if isinstance(field, AccountRecord))
     account_list = list(account_set)
     account_list.sort(key=lambda acc: acc.tag)
-    return render(*account_list, account_entry_predicate = lambda post: post.entry == entry, col=col, col_len=col_len)
+    return render(*account_list, account_entry_predicate = lambda post: post.entry == entry, layout=render_layout['default'], entry_counter=None)
 
 def render_journal_entry2(journal_entry: JournalEntry, layout):
     accounts_engaged = []
@@ -245,7 +246,7 @@ def render_journal_entry2(journal_entry: JournalEntry, layout):
                 accounts_entries.append(field)
         elif isinstance(field, list):
             for account_entry in field:
-                if account_entry.account and account_entry.amount:
+                if account_entry.account and account_entry.raw_amount:
                     accounts_engaged.append(account_entry.account)
                     accounts_entries.append(account_entry)
     # remove recurring accounts
@@ -313,10 +314,13 @@ def render_journal_entries2(journal_entry_list, layout=None):
     accounts_engaged = list(set(accounts_engaged))
     accounts_engaged.sort(key=lambda acc: acc.tag)
 
-    print(render2(accounts_engaged, accounts_entries, layout=layout, entry_counter=journal_entry_counter))
+    result = []
+    result.append(render2(accounts_engaged, accounts_entries, layout=layout, entry_counter=journal_entry_counter))
 
     for journal_entry in journal_entry_counter:
-        print(f"{journal_entry_counter[journal_entry]}. {journal_entry}")
+        result.append(f"({journal_entry_counter[journal_entry]})  {journal_entry}")
+
+    return '\n'.join(result)
 
 def render(*accounts, account_entry_predicate=None, layout=None, entry_counter=None):
     # col = layout.number_of_columns
@@ -382,7 +386,7 @@ def render2(accounts, accounts_entries, layout=None, entry_counter=None):
         result += line
     return result
 
-def t_form_gen(account, post_predicate, col_len,layout=None, entry_counter=None):
+def t_form_gen(account: Account, post_predicate, col_len,layout=None, entry_counter=None):
     t_account = T_account(account.tag, account.name, max_length=layout.t_account_width, max_amount_length=layout.t_account_amount_width, leading_spaces=0, new_line='', box=T_account.unicode_bold_table_box)  
     yield from t_account.header_generator()
 
@@ -397,11 +401,11 @@ def t_form_gen(account, post_predicate, col_len,layout=None, entry_counter=None)
             entry_counter[post.entry] = counter
 
     currency = account.currency
-    for post in filter(post_predicate, account.posts):
+    for post in filter(post_predicate, account.records_gen()):
         post_info = post.get_info()        
         # description = f'({entry_counter[post.entry]}.{post_info[1]})'
         description = f'({entry_counter[post.journal_entry]})'
-        yield from t_account.row_generator(description, currency.raw2str(post.amount), post.side)
+        yield from t_account.row_generator(description, currency.toStringForm(post.raw_amount), post.side)
 
 def t_form_gen2(account, account_entry_list, layout=None, entry_counter=None):
     t_account = T_account(account.tag, account.name, max_length=layout.t_account_width, max_amount_length=layout.t_account_amount_width, leading_spaces=0, new_line='', box=T_account.unicode_bold_table_box)  
