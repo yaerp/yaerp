@@ -24,7 +24,8 @@ class AccountingSystem:
         self.general_ledger = None
         self.currencies = dict()
         self.accounts = dict()
-        self.charts_of_accounts = dict()
+        # self.charts_of_accounts = dict()
+        self.coa = AccountTree(None, None)
         self.journals = dict()
         self.selected = dict()
 
@@ -168,7 +169,7 @@ class AccountingSystem:
 
     def find_journal_entry(self, sid: str = None, guid: str = None):
         if sid:
-            for journal in self.general_ledger.journals.values():
+            for journal in self.general_ledger.journals:
                 result = journal.get_by_sid(sid, not_rise_exception=True)
                 if result:
                     break
@@ -179,7 +180,7 @@ class AccountingSystem:
                     break
         return result
     
-    def match_journal_entries_gen(self, date, desc, ref, journal_tag, sids):
+    def match_journal_entries_gen(self, date: str, desc: str, ref: str, journal_tag: str, sids: list, state: str, reading_order: str, limit: int = 1000):
 
         def match(je, date:str, desc:str, ref:str, sids):
             if sids:
@@ -193,15 +194,42 @@ class AccountingSystem:
                 return False
             return True
             
+        if state == 'ALL':
+            posted = True
+            unposted = True
+        elif state == 'POSTED':
+            posted = True
+            unposted = False
+        elif state == 'UNPOSTED':
+            posted = False
+            unposted = True
+        else:
+            raise ValueError()
+
+        if reading_order == 'ASCENDING':
+            reverse = False
+        elif reading_order == 'DESCENDING':
+            reverse = True
+        else:
+            raise ValueError()
+
+        counter = 0
+
         if journal_tag:
             journal = self.get_journal(journal_tag)
-            for je in journal.journal_entries_gen():
+            for je in journal.entries_gen(posted=posted, unposted=unposted, reverse=reverse):
                 if match(je, date, desc, ref, sids):
+                    counter += 1
                     yield je
+                    if counter == limit:
+                        return
         else:
-            for je in self.general_ledger.journal_entries_gen():
+            for je in self.general_ledger.journal_entries_gen(posted=posted, unposted=unposted, reverse=reverse):
                 if match(je, date, desc, ref, sids):
+                    counter += 1
                     yield je
+                    if counter == limit:
+                        return
 
     def can_post_journal_entry(self, journal_entry):
         return journal_entry.can_post_journal_entry()
@@ -444,7 +472,7 @@ def empty_accounting_system() -> AccountingSystem:
             # sale_journal.tag: sale_journal,
             # purchase_journal.tag: purchase_journal,
         }
-    root = AccountTree(None, None)
+    # root = AccountTree(None, None)
     # assets = AccountTree(accsys.accounts["1"], root)
     # receivables = AccountTree(accsys.accounts["100"], assets)
     # AccountTree(accsys.accounts["100-1"], receivables)
@@ -476,7 +504,7 @@ def empty_accounting_system() -> AccountingSystem:
     # AccountTree(accsys.accounts["512"], opex)
     # AccountTree(accsys.accounts["513"], opex)
     # AccountTree(accsys.accounts["514"], opex)
-    accsys.coa = root # Chart of Accounts
+    # accsys.coa = root # Chart of Accounts
     # accsys.charts_of_accounts = {"main": root}
     # accsys.selected = {
     #     "account": "110",

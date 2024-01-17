@@ -60,7 +60,7 @@ class Journal:
             if je not in self.journal_entries:
                 self.journal_entries.insert_right(je)
 
-    def journal_entries_gen(self, posted: bool=True, not_posted: bool=True, date_beg: str=None, date_end: str=None):
+    def journal_entries_gen(self, posted: bool=True, not_posted: bool=True, date_beg: str=None, date_end: str=None, reverse=False):
         if posted and not_posted:
             for je in self.journal_entries:
                 if date_beg and je.date < date_beg:
@@ -84,6 +84,29 @@ class Journal:
                     if date_end and je.date > date_end:
                         continue
                     yield je
+
+    def entries_gen(self, posted: bool=True, unposted: bool=True, date_beg: str=None, date_end: str=None, reverse=False):
+        if not reverse:
+            entries_iterator = iter(self.journal_entries)
+        else:
+            entries_iterator = reversed(self.journal_entries)
+        
+        for je in entries_iterator:
+            # posted/unposted
+            if je.post:
+                if not posted:
+                    continue
+            else:
+                if not unposted:
+                    continue
+            # date_beg
+            if date_beg and je.date < date_beg:
+                continue
+            # date_end
+            if date_end and je.date > date_end:
+                continue
+            
+            yield je
 
     def gen_new(self):
         for je in self.journal_entries:

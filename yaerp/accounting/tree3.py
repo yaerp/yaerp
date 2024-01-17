@@ -208,7 +208,7 @@ class AccountTree():
         # has any ledger accounts or group accounts as children
         if self.is_analytical_account_node():
             return False
-        if self.children is None:
+        if not self.children:
             return False
         return reduce(
             lambda prev, curr: prev and (curr.is_ledger_account_node() or curr.is_group_of_ledger_accounts_node()),
@@ -304,8 +304,8 @@ class AccountTree():
             result += ' (ledger account)'
         if self.is_analytical_account_node():
             result += ' (analytical account)'
-        if (self.account and len(self.account.posted_records) > 0) or any(
-                n for n in self.get_internals_gen() if len(n.account.posted_records) > 0):
+        if (self.account and self.account.has_entries()) or any(
+                n for n in self.get_internals_gen() if n.account.has_entries()):
             dr = self.account.get_debit()
             cr = self.account.get_credit()
             bl = self.account.get_balance()
@@ -338,9 +338,8 @@ class AccountTree():
         txt = []
         ac_path = self.get_account_path()
         for index, tag in enumerate(ac_path):
-            if index == 0 and tag is None:
+            if index == 0 and not tag:
                 pass
-                # self._cmd.poutput('Chart of Accounts')
             else:
                 txt.append(f"{' '*index}{tag}")
         mark_line = []

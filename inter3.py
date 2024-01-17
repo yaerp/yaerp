@@ -64,26 +64,27 @@ class LoadableChartsOfAccounts(CommandSet):
     #     self._cmd.poutput('Apple')
 
     coa_parser = cmd2.Cmd2ArgumentParser()
-    coa_parser.add_argument('-n', '--name', required=True)
+    # coa_parser.add_argument('-n', '--name', required=True)
 
     @cmd2.as_subcommand_to('create', 'chart-of-accounts', coa_parser)
     def create_coa(self, ns: argparse.Namespace):
         """Create Charts of Accounts"""
-        accounting_system.add_chart_of_accounts(ns.name)
-        self._cmd.poutput('creating new chart of accounts: ' + ns.name)
+        # accounting_system.add_chart_of_accounts(ns.name)
+        # self._cmd.poutput('creating new chart of accounts: ' + ns.name)
+        pass
 
     @cmd2.as_subcommand_to('read', 'chart-of-accounts', coa_parser)
     def read_coa(self, ns: argparse.Namespace):
         """Read Charts of Accounts"""
-        coa = accounting_system.get_chart_of_accounts(ns.name)
+        coa = accounting_system.coa
         self._cmd.poutput(coa)
         for node in coa.get_internals_gen():
             self._cmd.poutput(node)
 
-    @cmd2.as_subcommand_to('delete', 'chart-of-accounts', coa_parser)
-    def delete_coa(self, ns: argparse.Namespace):
-        """Delete Charts of Accounts"""
-        self._cmd.poutput('deleting new chart of accounts: ' + ns.name)
+    # @cmd2.as_subcommand_to('delete', 'chart-of-accounts', coa_parser)
+    # def delete_coa(self, ns: argparse.Namespace):
+    #     """Delete Charts of Accounts"""
+    #     self._cmd.poutput('deleting new chart of accounts: ' + ns.name)
 
     update_coa_parser = cmd2.Cmd2ArgumentParser()
     # update_coa_parser.add_argument('-n', '--name', required=True)
@@ -210,12 +211,12 @@ class LoadableAccounts(CommandSet):
 
     create_account_parser = cmd2.Cmd2ArgumentParser()
     create_account_parser.add_argument('-t', '--tag', required=True, help='Unique tag identifier')
-    create_account_parser.add_argument('-p', '--parent', required=False, help='Parent account tag in the Chart of Accounts or "root"')
+    create_account_parser.add_argument('-p', '--parent', required=False, help='Parent account tag in the Chart of Accounts ("root" is default)')
     create_account_parser.add_argument('-l', '--ledger', required=True, help='General Ledger')
     create_account_parser.add_argument('-n', '--name', required=True, help='Full account name')
     create_account_parser.add_argument('-c', '--currency', required=True, help='Currency symbol (3-character code)')
+    create_account_parser.add_argument('-m', '--markers', nargs=(0,), help='Flag marker(s) in the Chart of Accounts; semi-colon separated, i.e: "-m ASSETS" or "-m ASSETS STOCK"')
     create_account_parser.add_argument('-token', '--token', default=None, help="Secure token to seal commands stored in script. ")
-    create_account_parser.add_argument('-m', '--markers', nargs=(0,), help='Flag marker(s) semi-colon separated, i.e: "-m ASSETS" or "-m ASSETS STOCK"')
 
     @cmd2.as_subcommand_to('create', 'account', create_account_parser)
     def create_account(self, ns: argparse.Namespace):
@@ -226,7 +227,7 @@ class LoadableAccounts(CommandSet):
         
         par_tree = None
         if ns.parent:
-            if ns.parent == "root":
+            if ns.parent.lower() == "root":
                 par_tree = accounting_system.coa
             else:
                 par_tree = accounting_system.coa.get_node(tag=ns.parent)
@@ -277,12 +278,12 @@ class LoadableAccounts(CommandSet):
             ac = accounting_system.get_account(ns.tag)
             ac_node = accounting_system.coa.get_node(tag=ac.tag)
             ac_path = ac_node.get_account_path()
-            for index, tag in enumerate(ac_path):
-                if index == 0 and tag is None:
-                    pass
-                    # self._cmd.poutput('Chart of Accounts')
-                else:
-                    self._cmd.poutput(f'{" "*index}{tag}')
+            # for index, tag in enumerate(ac_path):
+            #     if index == 0 and tag is None:
+            #         pass
+            #         # self._cmd.poutput('Chart of Accounts')
+            #     else:
+            #         self._cmd.poutput(f'{" "*index}{tag}')
             self._cmd.poutput(ac_node.full_str()) 
         elif ns.name:
             raise NotImplementedError()
@@ -291,9 +292,9 @@ class LoadableAccounts(CommandSet):
     update_account_parser.add_argument('-t', '--tag', required=True)
     update_account_parser.add_argument('-nn', '--new-name', required=False)
     update_account_parser.add_argument('-nt', '--new-tag', required=False)
-    update_account_parser.add_argument('-m', '--markers', required=False, nargs=(1,), help='Create new set of mark(s) in the account tree, i.e: "-m ASSETS" or "-m ASSETS STOCK"') 
-    update_account_parser.add_argument('-am', '--add-markers', required=False, nargs=(1,), help='Add mark(s) to exsting marker set in the account tree, i.e: 1 marker: "-am ASSETS" or more than 1: "-am EXPENSES COST_OF_GOODS_SOLD"')
-    update_account_parser.add_argument('-dm', '--del-markers', required=False, nargs=(1,), help='Delete mark(s) from existing marker set in the account tree, i.e: "-dm ASSETS" or "-dm ASSETS STOCK"') 
+    update_account_parser.add_argument('-m', '--markers', required=False, nargs=(1,), help='Create new set of mark(s) assigned to the Account, i.e: "-m ASSETS" or "-m ASSETS STOCK"') 
+    update_account_parser.add_argument('-am', '--add-markers', required=False, nargs=(1,), help='Add mark(s) to exsting marker set in the Account, i.e: 1 marker: "-am ASSETS" or more than 1: "-am EXPENSES COST_OF_GOODS_SOLD"')
+    update_account_parser.add_argument('-dm', '--del-markers', required=False, nargs=(1,), help='Delete mark(s) from existing marker set in the Account, i.e: "-dm ASSETS" or "-dm ASSETS STOCK"') 
     update_account_parser.add_argument('-token', '--token', default=None, help='Secure token to seal commands stored in script. ')
     
     @cmd2.as_subcommand_to('update', 'account', update_account_parser)
@@ -795,46 +796,44 @@ help=
         if ns.method != "STORNO":
             command_args.extend(["-m", ns.method])
         command_args.append(je_sids_to_cancel)
-        store_command(self._cmd, command_args, ns.token, "POSTED")
+        store_command(self._cmd, command_args, ns.token, "POSTED")  
 
     list_entries_parser = cmd2.Cmd2ArgumentParser()
-    list_entries_parser.add_argument('-date', '--matching-date', default=None, help='entry date RRRR-MM-DD')
-    list_entries_parser.add_argument('-desc', '--matching-description', default=None, help='text in description')   
-    list_entries_parser.add_argument('-ref', '--matching-reference', default=None, help='text in reference')
-    list_entries_parser.add_argument('-j', '--journal-symbol', default=None, help='journal')
-    list_entries_parser.add_argument('-sids', nargs=(1,), help='')
-    # list_entries_parser.add_argument()
+    list_entries_parser.add_argument('-order', '--order-of-entries', choices=['ASCENDING', 'DESCENDING'], default='ASCENDING', help='order of searching Journal Entries: from oldest (ASCENDING), from newest (DESCENDING)')
+    list_entries_parser.add_argument('-date', '--matching-date', default=None, help='match date')
+    list_entries_parser.add_argument('-desc', '--matching-description', default=None, help='match text in description')   
+    list_entries_parser.add_argument('-ref', '--matching-reference', default=None, help='match text in reference')
+    list_entries_parser.add_argument('-j', '--journal', default="GJ", help='matching journal')
+    list_entries_parser.add_argument('-sids', nargs=(1,), help='j/e identifier(s)')
+    list_entries_parser.add_argument('-state', '--state-in-ledger', choices=['ALL', 'POSTED', 'UNPOSTED'], default='ALL', help='match j/e posting state')
+    list_entries_parser.add_argument('-outform', '--output-form', choices=['list', 'T-accounts'], default='list')
+    list_entries_parser.add_argument('-T', '--T-accounts-layout', default='default', choices=render_layout, help='T-account format', required=False)
+    list_entries_parser.add_argument('-limit', '--limit-entries', default=10, help='show up to [N] Journal Entries', required=False)
+    
     @cmd2.as_subcommand_to('list', 'entries', list_entries_parser)
     def list_entries(self, ns: argparse.Namespace):
-        # self._cmd.poutput('-SID-  ---Date---  -Status-  Description')
-        # self._cmd.poutput(JournalEntry.str_header())
-
         matching_je_generator = accounting_system.match_journal_entries_gen(
             ns.matching_date,
             ns.matching_description,
             ns.matching_reference,
-            ns.journal_symbol,
-            ns.sids)
-        number = 0
-        for number, entry in enumerate(matching_je_generator, 1):
-            self._cmd.poutput(f'{entry}')
-        self._cmd.poutput(f'{number} entries found')      
-
-    @cmd2.as_subcommand_to('list', 'T-entries', list_entries_parser)
-    def list_T_entries(self, ns: argparse.Namespace):
-        # self._cmd.poutput('-SID-  ---Date---  -Status-  Description')
-        # self._cmd.poutput(JournalEntry.str_header())
-
-        matching_je_generator = accounting_system.match_journal_entries_gen(
-            ns.matching_date,
-            ns.matching_description,
-            ns.matching_reference,
-            ns.journal_symbol,
-            ns.sids)
-        found_je_list = list(matching_je_generator)
-        # number = 0
-        T_form = render_journal_entries2(found_je_list, layout=render_layout['default'])
-        self._cmd.poutput(T_form)
+            ns.journal,
+            ns.sids,
+            ns.state_in_ledger,
+            ns.order_of_entries,
+            int(ns.limit_entries)
+        )
+        found_je_list = []
+        limit = int(ns.limit_entries)
+        for number, je in enumerate(matching_je_generator, 1):
+            found_je_list.append(je)
+            if number == limit:
+                break
+        if ns.output_form == 'list':
+            for entry in found_je_list:
+                self._cmd.poutput(f'{entry}')
+        else:
+            T_form = render_journal_entries2(found_je_list, layout=render_layout[ns.T_accounts_layout])
+            self._cmd.poutput(T_form)
 
 @with_default_category('Period')
 class LoadablePeriod(CommandSet):

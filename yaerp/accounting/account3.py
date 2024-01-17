@@ -45,12 +45,17 @@ class Account:
         if self.ledger:
             ledger.register_account(self)
 
-    def records_gen(self, posted=True, not_posted=True, side=None):
+    def records_gen(self, posted=True, unposted=True, side=None):
         acc_entries = self.ledger.account_records_gen(posted=posted,
-                                                      not_posted=not_posted,
+                                                      unposted=unposted,
                                                       side=side,
                                                       account=self)
         return acc_entries
+
+    def has_entries(self):
+        for _ in self.records_gen():
+            return True
+        return False
 
     def get_debit(self, predicate=None):
         dr_entries = self.records_gen(side=AccountSide.Dr)

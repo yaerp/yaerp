@@ -16,16 +16,16 @@ class Ledger:
         self.accounts = SortedCollection([], key=operator.attrgetter('tag')) # associated accounts
         self.journals = SortedCollection([], key=operator.attrgetter('tag')) # associated journals
 
-    def journal_entries_gen(self, posted=True, not_posted=True, date_beg=None, date_end=None, only_journal=None):
+    def journal_entries_gen(self, posted=True, unposted=True, date_beg=None, date_end=None, only_journal=None, reverse=False):
         sources_of_journal_entries = []
         for journal in self.journals:
             if only_journal and only_journal != journal:
                 continue
-            sources_of_journal_entries.append(journal.journal_entries_gen(posted, not_posted, date_beg, date_end))
-        return heapq.merge(*sources_of_journal_entries)
+            sources_of_journal_entries.append(journal.entries_gen(posted, unposted, date_beg, date_end, reverse=reverse))
+        return heapq.merge(*sources_of_journal_entries, reverse=reverse)
 
-    def account_records_gen(self, posted=True, not_posted=True, date_beg=None, date_end=None, side=None, account=None):
-        for je in self.journal_entries_gen(posted, not_posted, date_beg, date_end):
+    def account_records_gen(self, posted=True, unposted=True, date_beg=None, date_end=None, side=None, account=None, reverse=False):
+        for je in self.journal_entries_gen(posted, unposted, date_beg, date_end, reverse=reverse):
             yield from je.account_records_gen(side, account)
 
     def get_account(self, account_tag):
