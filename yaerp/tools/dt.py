@@ -28,7 +28,7 @@ def dt(cdt: datetime,
                     hour=c_hour, minute=c_minute, second=c_second,
                     microsecond=c_microsecond, tzinfo=c_tz)
 
-def datetime_str(input: str, date_time=None, zeroed_time=False) -> datetime:
+def datetime_str(input: str, date_time=None, zeroed_time=False, matching_purposes=False) -> datetime:
         if not input:
             raise ValueError
         input = input.upper().strip()
@@ -54,6 +54,22 @@ def datetime_str(input: str, date_time=None, zeroed_time=False) -> datetime:
             case 'TOMORROW':
                 cdt = dt(cdt, zeroed_time=True)
                 cdt = cdt + relativedelta(days=+1)
+            case 'PM':
+                cdt = dt(cdt, day=1, zeroed_time=True)
+                cdt = cdt + relativedelta(months=-1)
+            case 'TM':
+                cdt = dt(cdt, day=1, zeroed_time=True)
+            case 'NM':
+                cdt = dt(cdt, day=1, zeroed_time=True)
+                cdt = cdt + relativedelta(months=+1)
+            case 'PY':
+                cdt = dt(cdt, month=1, day=1, zeroed_time=True)
+                cdt = cdt + relativedelta(years=-1)
+            case 'TY':
+                cdt = dt(cdt, month=1, day=1, zeroed_time=True)
+            case 'NY':
+                cdt = dt(cdt, month=1, day=1, zeroed_time=True)
+                cdt = cdt + relativedelta(years=+1)
             case 'FDPM':
                 cdt = dt(cdt, day=1, zeroed_time=True)
                 cdt = cdt + relativedelta(months=-1)
@@ -99,5 +115,29 @@ def datetime_str(input: str, date_time=None, zeroed_time=False) -> datetime:
                 cdt = cdt + relativedelta(years=+2, days=-1)
             case __:
                 return __
-        return cdt.isoformat(sep=' ', timespec='seconds')
+        dt_string = cdt.isoformat(sep=' ', timespec='seconds')
+        if not matching_purposes:
+            return dt_string
+        else:
+            match(input):
+                case 'TODAY':
+                    pass
+                case 'YESTERDAY':
+                    pass
+                case 'TOMORROW':
+                    return dt_string[:10]
+                case 'PM':
+                    pass
+                case 'TM':
+                    pass
+                case 'NM':
+                    return dt_string[:7]
+                case 'PY':
+                    pass
+                case 'TY':
+                    pass
+                case 'NY':
+                    return dt_string[:4]
+                case __:
+                    return __
         
