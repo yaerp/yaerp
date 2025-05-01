@@ -213,6 +213,9 @@ class AccountingSystem:
         else:
             raise ValueError()
 
+        if date:
+            pass # convert TODAY, YESTERDAY, TY, etc into date string
+
         counter = 0
 
         if journal_tag:
