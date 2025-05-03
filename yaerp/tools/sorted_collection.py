@@ -157,6 +157,14 @@ class SortedCollection(object):
         del self._keys[i]
         del self._items[i]
 
+    def refresh_key(self, expired_key):
+        i = bisect_left(self._keys, expired_key)
+        if i != len(self) and self._keys[i] == expired_key:
+            item = self._items[i]
+            del self._keys[i]
+            del self._items[i]
+            self.insert(item)
+
     def find(self, k):
         'Return first item with a key == k.  Raise ValueError if not found.'
         i = bisect_left(self._keys, k)

@@ -24,8 +24,9 @@ class AccountingSystem:
         self.general_ledger = None
         self.currencies = dict()
         self.accounts = dict()
-        # self.charts_of_accounts = dict()
+        self.charts_of_accounts = dict()
         self.coa = AccountTree(None, None)
+        self.charts_of_accounts[''] = self.coa # default chart of accounts
         self.journals = dict()
         self.selected = dict()
 
@@ -58,14 +59,51 @@ class AccountingSystem:
             raise ValueError(f"Account '{tag}' not found")
         return account
 
+    def can_del_account(self, tag: str):
+        account = self.accounts.get(tag, None)
+        if not account:        
+            raise ValueError(f"Account '{tag}' not found")
+        
+        # check journal fields
+        for j in self.journals.values():
+            je_fields = j.initialize_fields()
+            for k, value in je_fields.items():
+                if isinstance(value, AccountRecord):
+                    if value.account == account:
+                        return False
+
+        # check journal entries
+        # ...__
+
+
+        return True
+        
+    def del_account(self, tag: str):
+        account = self.accounts.get(tag, None)
+        if not account:
+            raise ValueError(f"Account '{tag}' not found")
+        for j in self.journals.values():
+            je_fields = j.initialize_fields()
+            for k, value in je_fields.items():
+                if isinstance(value, AccountRecord):
+                    if value.account == account:
+                        raise ValueError(f"Account '{tag}' is specified as field: '{k}' in journal '{j.tag}'")
+        del self.accounts[tag]
+
     def add_chart_of_accounts(self, name: str):
-        coa = AccountTree(None, None)
-        self.charts_of_accounts[name] = coa
+        if name:
+            if name in self.charts_of_accounts.keys():
+                raise ValueError("Chart of Accounts with that name already exists")
+            self.charts_of_accounts[name] = AccountTree(None, None)
 
     def get_chart_of_accounts(self, name: str) -> AccountTree:
         return self.charts_of_accounts[name]
 
     def del_chart_of_accounts(self, name: str):
+        if name == '':
+            raise ValueError('Default Chart of Accounts cannot be deleted')
+        if not name:
+            raise ValueError('Please provide a correct name of Chart of Accounts')
         coa_to_del = self.get_chart_of_accounts(name)
         has_posts = False
         for _ in coa_to_del.internal_posts_iter():
@@ -76,38 +114,65 @@ class AccountingSystem:
         del self.charts_of_accounts[name]
 
     def add_node(self, coa_name: str, account_tag: str, parent_account_tag: str = None):
-        if parent_account_tag:
-            parent_node = self.coa.get_node(account_tag=parent_account_tag)
+        chart_of_accs = None
+        if not coa_name:
+            chart_of_accs = self.coa
         else:
-            parent_node = self.coa
-        ac = self.get_account(account_tag)
-        AccountTree(ac, parent_node)
+            chart_of_accs = self.charts_of_accounts[coa_name]
+
+        if parent_account_tag:
+            parent_node = self.chart_of_accs.get_node(account_tag=parent_account_tag)
+        else:
+            parent_node = chart_of_accs
+        acc = self.get_account(account_tag)
+        if not acc:
+            raise ValueError("Account not found")
+        chart_of_accs.append_child()
+        acc_leaf = AccountTree(acc, parent_node)
+        parent_node.append_child(acc_leaf)
 
     def get_node(self, coa_name: str, account_tag: str = None, account_name: str = None, account_guid: str = None):
-        # coa = self.get_chart_of_accounts(coa_name)
-        return self.coa.get_node(account_tag, account_name, account_guid)
+        chart_of_accs = None
+        if not coa_name:
+            chart_of_accs = self.coa
+        else:
+            chart_of_accs = self.charts_of_accounts[coa_name]
+
+        return chart_of_accs.get_node(account_tag, account_name, account_guid)
 
     def move_node(self, coa_name: str, account_tag: str, new_parent_account_tag: str = None):
-        acn = self.get_node(None, account_tag)
+        chart_of_accs = None
+        if not coa_name:
+            chart_of_accs = self.coa
+        else:
+            chart_of_accs = self.charts_of_accounts[coa_name]      
+        
+        acn = chart_of_accs.get_node(account_tag)
+        # acn = self.get_node(None, account_tag)
         if new_parent_account_tag:
-            new_parent_node = self.get_node(coa_name, account_tag=new_parent_account_tag)
+            new_parent_node = chart_of_accs.get_node(new_parent_account_tag)
             if not new_parent_node:
                 raise ValueError(f'parent account {new_parent_account_tag} not found')
             if acn in new_parent_node.get_node_path():
                 raise ValueError('attemt to move node in the same node path')
         else:
-            new_parent_node = self.coa
+            new_parent_node = chart_of_accs
         if acn.parent:
             acn.parent.children.remove(acn)
             acn.parent = new_parent_node
-            # acn.parent.children.insert(acn)
             acn.parent.append_child(acn)
-            # AccountTree(acn.account, parent=new_parent_node)
         else:
             raise ValueError(f"Attempt to move root node.")
 
-    def delete_node(self, coa_name: str, account_tag: str):
-        node_to_del = self.get_node(coa_name, tag=account_tag)
+    def del_node(self, coa_name: str, account_tag: str):
+        chart_of_accs = None
+        if not coa_name:
+            chart_of_accs = self.coa
+        else:
+            chart_of_accs = self.charts_of_accounts[coa_name]      
+        
+        node_to_del = chart_of_accs.get_node(account_tag)
+
         has_posts = False
         for _ in node_to_del.internal_posts_iter():
             has_posts = True
@@ -136,7 +201,7 @@ class AccountingSystem:
             raise ValueError(f"Journal tag '{tag}' not found")
         return journal
 
-    def delete_journal(self, tag: str):
+    def del_journal(self, tag: str):
         journal = self.get_journal(tag)
         if journal.journal_entries:
             raise ValueError(f"Journal '{tag}' is not empty. Delete is not possible.")

@@ -92,11 +92,24 @@ class Ledger:
             raise ValueError('account is None')  
         if account.ledger and account.ledger != self:
             raise ValueError('account already associated with an another Ledger')  
-        if account in self.accounts:
-            raise ValueError('account tag already exist in the Ledger')       
+        if account in self.accounts._items:
+            # if already exist - reinsert account (tag change was possible)
+            self.accounts.remove(account)      
         self.accounts.insert(account)
         account.ledger = self
- 
+
+    def update_account_tag(self, new_tag: str, current_tag: str, account): # SortedCollection (self.account) needs special work
+        if not account:
+            raise ValueError('account is None')  
+        if account.ledger and account.ledger != self:
+            raise ValueError('account already associated with an another Ledger')  
+        if current_tag in self.accounts._keys and new_tag not in self.accounts._keys:
+            if self.accounts.find(current_tag) != account:
+                raise ValueError("account do not match to old tag")
+            self.accounts.remove(account)   
+            account.tag =  new_tag
+            self.accounts.insert(account)
+
     def register_journal(self, journal):
         if not journal:
             raise ValueError('journal is None')  

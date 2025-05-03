@@ -54,6 +54,10 @@ def store_command(cmd, command_args, token_from_file, output_info):
         if secure_token().token() != token_from_file:
             cmd.poutput(f"token mismatch; stored in file:{token_from_file}, calculated from data in file:{secure_token().token()}")
 
+def interactive_print(cmd, text):
+    if not cmd.in_script() and not cmd.in_pyscript():
+        cmd.poutput(text)
+
 @with_default_category('ChartsOfAccounts')
 class LoadableChartsOfAccounts(CommandSet):
 
@@ -223,14 +227,11 @@ class LoadableAccounts(CommandSet):
         # prepare command
         ac = accounting_system.accounts.get(ns.tag, None)
         if ac:
-            raise ValueError(f"Another Account exist with tag {ns.tag}")
+            raise ValueError(f"Another Account exist with tag {ns.tag}: '{ac.name}'")
         
         par_tree = None
         if ns.parent:
-            if ns.parent.lower() == "root":
-                par_tree = accounting_system.coa
-            else:
-                par_tree = accounting_system.coa.get_node(tag=ns.parent)
+            par_tree = accounting_system.coa.get_node(tag=ns.parent)
             if not par_tree:
                 raise ValueError(f"Not found parent node {ns.parent}")
         else:
@@ -246,13 +247,14 @@ class LoadableAccounts(CommandSet):
         # run command
         accounting_system.add_account(ns.tag, ns.ledger, ns.currency, ns.name)
         ac = accounting_system.accounts.get(ns.tag)
-        if par_tree:
-            AccountTree(ac, parent=par_tree)
-        ac_node = accounting_system.coa.get_node(tag=ac.tag)
+        ac_leaf = AccountTree(ac, parent=par_tree)
+        # par_tree.append_child(ac_leaf)
+
         if mark_list:
             for m in mark_list:
-                ac_node.marker.add(m)
-        ac_node.marker.extend(par_tree.marker.to_list()) # copy parent marks (inheritance)
+                ac_leaf.marker.add(m)
+        ac_leaf.marker.extend(par_tree.marker.to_list()) # copy parent marks (inheritance)
+        
         # store command
         command_args = []
         command_args.extend(["create", "account"])
@@ -266,7 +268,7 @@ class LoadableAccounts(CommandSet):
             command_args.append("--markers")
             for m in mark_list:
                 command_args.append(str(m))
-        store_command(self._cmd, command_args, ns.token, ac_node.full_str())
+        store_command(self._cmd, command_args, ns.token, ac_leaf.full_str())
 
     account_parser = cmd2.Cmd2ArgumentParser()
     account_parser.add_argument('-t', '--tag', required=False)
@@ -277,13 +279,6 @@ class LoadableAccounts(CommandSet):
         if ns.tag:
             ac = accounting_system.get_account(ns.tag)
             ac_node = accounting_system.coa.get_node(tag=ac.tag)
-            ac_path = ac_node.get_account_path()
-            # for index, tag in enumerate(ac_path):
-            #     if index == 0 and tag is None:
-            #         pass
-            #         # self._cmd.poutput('Chart of Accounts')
-            #     else:
-            #         self._cmd.poutput(f'{" "*index}{tag}')
             self._cmd.poutput(ac_node.full_str()) 
         elif ns.name:
             raise NotImplementedError()
@@ -295,17 +290,36 @@ class LoadableAccounts(CommandSet):
     update_account_parser.add_argument('-m', '--markers', required=False, nargs=(1,), help='Create new set of mark(s) assigned to the Account, i.e: "-m ASSETS" or "-m ASSETS STOCK"') 
     update_account_parser.add_argument('-am', '--add-markers', required=False, nargs=(1,), help='Add mark(s) to exsting marker set in the Account, i.e: 1 marker: "-am ASSETS" or more than 1: "-am EXPENSES COST_OF_GOODS_SOLD"')
     update_account_parser.add_argument('-dm', '--del-markers', required=False, nargs=(1,), help='Delete mark(s) from existing marker set in the Account, i.e: "-dm ASSETS" or "-dm ASSETS STOCK"') 
+    update_account_parser.add_argument('-np', '--new-parent', required=False, help='Set parent account, i.e: "-np 100", "-np #" (set empty))') 
     update_account_parser.add_argument('-token', '--token', default=None, help='Secure token to seal commands stored in script. ')
     
     @cmd2.as_subcommand_to('update', 'account', update_account_parser)
     def update_account(self, ns: argparse.Namespace):
 
+        if ns.new_tag: # at the very end change tag if so
+            if ns.new_tag in accounting_system.accounts.keys():
+                raise ValueError(f'New tag found in existing Account "{ns.new_tag}"')
+ 
         ac = accounting_system.get_account(ns.tag)
         ac_tree = accounting_system.coa.get_node(tag=ac.tag)
         if ns.markers:
             if ns.add_markers or ns.del_markers:
                 raise ValueError('-m / --markers cannot be used with -am / --add-markers / -dm / --del-markers')
+        
+        ac_tree_parent = None
+        if ns.new_parent and ns.new_parent != '#':
+            ac_tree_parent = accounting_system.coa.get_node(tag=ns.new_parent)
+            if not ac_tree_parent:
+                raise ValueError(f'Account "{ns.new_parent}" specified as new parent not found')
+            if ac_tree_parent == ac_tree:
+                raise ValueError(f"Account and parent account are the same")
+            if ac_tree_parent in ac_tree.get_internals_gen():
+                raise ValueError(f'The account "{ns.new_parent}" planned to be a parent is currently descendant of account "{ac_tree.account.tag}" ')
+        
         # run command
+        interactive_print(self._cmd, "CURRENT VERSION:\n")
+        interactive_print(self._cmd, ac_tree.full_str())
+        interactive_print(self._cmd, "\n")
         if ns.new_name:
             ac.name = ns.new_name
 
@@ -340,15 +354,27 @@ class LoadableAccounts(CommandSet):
                 internal_nodes.marker.extend(marks_to_really_add)
                 internal_nodes.marker.reduce(marks_to_really_del)
 
-        if ns.new_tag: # at the very end change tag if 
-            if ns.new_tag in accounting_system.accounts.keys():
-                raise ValueError(f'New tag found in existing Account "{ns.new_tag}"')
+        if ns.new_parent:
+            if ns.new_parent == '#':
+                ac_tree.parent = None
+            else:
+                ac_tree.parent = ac_tree_parent
+            
+        if ns.new_tag: # at the very end change tag if so
+            old_tag = ac.tag
+
+            # temporary remove from COA
+            acc_node = accounting_system.coa.get_node(tag=old_tag)
+
+            accounting_system.general_ledger.update_account_tag(ns.new_tag, old_tag, ac)
             ac.tag = ns.new_tag
-            accounting_system.accounts[ac.tag] = ac
+            accounting_system.accounts[ns.new_tag] = ac
             ac = accounting_system.get_account(ns.new_tag)
-            del accounting_system.accounts[ns.tag]
-            if not ac:
-                raise ValueError("cannot get account with changed tag")
+            del accounting_system.accounts[old_tag]
+
+            acc_node.parent.refresh_child_tag(old_tag)
+
+ 
         # store command
         command_args = []
         command_args.extend(["update", "account"])
@@ -369,22 +395,63 @@ class LoadableAccounts(CommandSet):
             command_args.append('--del-markers')
             for m in del_mark_set:
                 command_args.append(str(m))
+        if ns.new_parent:
+            command_args.extend(["--new-parent", ns.new_parent])
+        interactive_print(self._cmd, "UPDATED VERSION:\n")
         store_command(self._cmd, command_args, ns.token, ac_tree.full_str())
+        interactive_print(self._cmd, "\n")
 
     delete_account_parser = cmd2.Cmd2ArgumentParser()
-    delete_account_parser.add_argument('-t', '--tag', required=True, nargs=(1,), help="Tag identifier(s)")
-
+    delete_account_parser.add_argument('-t', '--tag', required=True, help="Tag identifier(s)")
+    delete_account_parser.add_argument('-r', '--reqursive', required=False, default=False, help='Delete all sub-accounts')        
+    delete_account_parser.add_argument('-token', '--token', default=None, help='Secure token to seal commands stored in script. ')
+    
     @cmd2.as_subcommand_to('delete', 'account', delete_account_parser)
     def delete_account(self, ns: argparse.Namespace):
-        self._cmd.poutput('deleting account' + str(ns.tag))
+        ac_node = accounting_system.coa.get_node(tag=ns.tag)
+        if not ac_node:
+            raise ValueError(f"Delete error. Account '{ns.tag}' not found.")
+        if ac_node.account.has_entries():
+            raise ValueError(f"Delete not possible. The account '{ac_node.account.tag}' has some entries.")
+        for internal_ac_node in ac_node.get_internals_gen():
+            if internal_ac_node.account.has_entries():
+                raise ValueError(f"Delete not possible. Sub-account '{internal_ac_node.account.tag}' has some entries.")
+        if not ns.reqursive and ac_node.has_nodes():
+                raise ValueError(f"Delete error. The account '{ac_node.account.tag}' contains sub-account(s).")
 
+
+        interactive_print(self._cmd, ac_node.full_str())
+
+        # delete from the General Ledger and accounting system
+        accounting_system.general_ledger.unregister_account(ac_node.account)
+        if ns.reqursive:
+            for internal_ac_node in ac_node.get_internals_gen():
+                accounting_system.general_ledger.unregister_account(internal_ac_node.account)
+                del accounting_system.accounts[internal_ac_node.account.tag]
+        del accounting_system.accounts[ac_node.account.tag]
+
+        # delete from the Chart of Accounts
+        ac_node.parent.children.remove(ac_node)
+        
+        # store command
+        command_args = []
+        command_args.extend(["delete", "account"])
+        command_args.extend(["--tag", ns.tag])
+        if ns.reqursive:
+            command_args.append("--reqursive")
+        store_command(self._cmd, command_args, ns.token, "DELETED")
+        
     @cmd2.as_subcommand_to('open', 'account', account_parser)
     def open_account(self, _: argparse.Namespace):
         self._cmd.poutput('opening account (enable operations)')  
-
+        ac = accounting_system.get_account(ns.tag)
+        ac_tree = accounting_system.coa.get_node(tag=ac.tag)
+        
     @cmd2.as_subcommand_to('close', 'account', account_parser)
     def close_account(self, _: argparse.Namespace):
         self._cmd.poutput('close account (disable operations)') 
+        ac = accounting_system.get_account(ns.tag)
+        ac_tree = accounting_system.coa.get_node(tag=ac.tag)
 
     @cmd2.as_subcommand_to('list', 'accounts', account_parser)
     def list_accounts(self, _: argparse.Namespace):

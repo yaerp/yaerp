@@ -26,7 +26,7 @@ class AccountTree():
         self.children = None # collection of AccountTree objects
         self.marker = Marker() # 
 
-    def append_child(self, child):
+    def append_child(self, child: "AccountTree"):
 
         def sorting_key(x: AccountTree):
             if x.account:
@@ -36,6 +36,21 @@ class AccountTree():
         if self.children is None:
             self.children = SortedCollection([], key=sorting_key)
         self.children.insert(child)
+
+    def remove_child(self, child: "AccountTree"):
+
+        def sorting_key(x: AccountTree):
+            if x.account:
+                return x.account.tag
+            return ''
+        
+        if self.children:
+            self.children.remove(child)
+        if len(self.children) == 0:
+            self.children = None
+
+    def refresh_child_tag(self, old_tag: str):
+        self.children.refresh_key(old_tag)
 
     def add_marks(self, *marks):
         for mark in marks:
@@ -49,7 +64,7 @@ class AccountTree():
         for child in self.children:
             child.remove_marks(marks)
 
-    def get_node(self, tag=None, name=None, guid=None):
+    def get_node(self, tag=None, name=None, guid=None) -> 'AccountTree':
         if self.account is not None:
             if self.account.tag == tag or self.account.name == name or self.account.guid == guid:
                 return self
