@@ -10,6 +10,7 @@ from yaerp.accounting.journal3 import JournalEntry
 from yaerp.accounting.account3 import Account
 from yaerp.accounting.account3 import AccountSide
 from yaerp.accounting.account3 import AccountRecord
+from yaerp.accounting.listener import Listener
 from yaerp.accounting.marker import Assets, BalanceSheet, Clearing, Equity, Expenses, IncomeStatement, Liabilities, Revenues
 from yaerp.accounting.reports.t_account import T_account, render_journal_entries, render_journal_entries2, render_journal_entry, render_journal_entry2, render_layout
 from yaerp.accounting.tree3 import AccountTree
@@ -25,14 +26,18 @@ class AccountingSystem:
         self.currencies = dict()
         self.accounts = dict()
         self.charts_of_accounts = dict()
-        self.coa = AccountTree(None, None)
-        self.charts_of_accounts[''] = self.coa # default chart of accounts
+        self.coa = AccountTree(None, None)      # the main Chart of Accounts (COA)
+        self.charts_of_accounts[''] = self.coa
         self.journals = dict()
         self.selected = dict()
+        self.listener = Listener()
 
-    def add_currency(self, code: str, currency_id: str, subunits_in_one_unit: int, 
+    def activate_listener(self, listener: Listener):
+        self.listener = listener
+
+    def add_currency(self, code: str, currency_id: str, subunits_in_one_unit: int,
                      international_name: str, national_unit_symbol: str, national_subunit_symbol: str):
-        new_currency = Currency(code, currency_id, subunits_in_one_unit, 
+        new_currency = Currency(code, currency_id, subunits_in_one_unit,
                            international_name, national_unit_symbol, national_subunit_symbol)
         if self.currencies.get(new_currency.symbol, None):
             raise ValueError("Currency already exist")
@@ -50,8 +55,10 @@ class AccountingSystem:
         currency = self.currencies.get(currency_code, None)
         if not currency:
             raise ValueError("Currency not found")
+        self.listener.account_create_beg(tag)
         new_account = Account(tag, self.general_ledger, currency, name)
         self.accounts[tag] = new_account
+        self.listener.account_create_end(tag)
 
     def get_account(self, tag: str) -> Account:
         account = self.accounts.get(tag, None)
@@ -61,23 +68,25 @@ class AccountingSystem:
 
     def can_del_account(self, tag: str):
         account = self.accounts.get(tag, None)
-        if not account:        
+        if not account:
             raise ValueError(f"Account '{tag}' not found")
-        
+
         # check journal fields
         for j in self.journals.values():
             je_fields = j.initialize_fields()
             for k, value in je_fields.items():
                 if isinstance(value, AccountRecord):
                     if value.account == account:
+                        # the account is crucial element of journal fields
                         return False
 
         # check journal entries
-        # ...__
-
+        if account.has_entries():
+            # some entries exist for this account
+            return False
 
         return True
-        
+
     def del_account(self, tag: str):
         account = self.accounts.get(tag, None)
         if not account:
@@ -88,13 +97,17 @@ class AccountingSystem:
                 if isinstance(value, AccountRecord):
                     if value.account == account:
                         raise ValueError(f"Account '{tag}' is specified as field: '{k}' in journal '{j.tag}'")
+        self.listener.account_delete_beg(tag)
         del self.accounts[tag]
+        self.listener.account_delete_end(tag)
 
     def add_chart_of_accounts(self, name: str):
         if name:
             if name in self.charts_of_accounts.keys():
                 raise ValueError("Chart of Accounts with that name already exists")
+            self.listener.atree_create_beg(name)
             self.charts_of_accounts[name] = AccountTree(None, None)
+            self.listener.atree_create_end(name)
 
     def get_chart_of_accounts(self, name: str) -> AccountTree:
         return self.charts_of_accounts[name]
@@ -111,7 +124,9 @@ class AccountingSystem:
             break
         if has_posts:
             raise ValueError(f"The Chart of Accounts '{name}' contains account entries. Delete is not possible.")
+        self.listener.atree_delete_beg(name)
         del self.charts_of_accounts[name]
+        self.listener.atree_delete_end(name)
 
     def add_node(self, coa_name: str, account_tag: str, parent_account_tag: str = None):
         chart_of_accs = None
@@ -127,11 +142,14 @@ class AccountingSystem:
         acc = self.get_account(account_tag)
         if not acc:
             raise ValueError("Account not found")
-        chart_of_accs.append_child()
+        self.listener.atree_create_beg(account_tag)
+        self.listener.account_update_beg(parent_node)       
         acc_leaf = AccountTree(acc, parent_node)
         parent_node.append_child(acc_leaf)
+        self.listener.account_update_end(parent_node)
+        self.listener.atree_create_end(acc_leaf)
 
-    def get_node(self, coa_name: str, account_tag: str = None, account_name: str = None, account_guid: str = None):
+    def get_node(self, coa_name: str, account_tag: str | None = None, account_name: str | None = None, account_guid: str | None = None):
         chart_of_accs = None
         if not coa_name:
             chart_of_accs = self.coa
@@ -145,8 +163,8 @@ class AccountingSystem:
         if not coa_name:
             chart_of_accs = self.coa
         else:
-            chart_of_accs = self.charts_of_accounts[coa_name]      
-        
+            chart_of_accs = self.charts_of_accounts[coa_name]
+
         acn = chart_of_accs.get_node(account_tag)
         # acn = self.get_node(None, account_tag)
         if new_parent_account_tag:
@@ -158,9 +176,15 @@ class AccountingSystem:
         else:
             new_parent_node = chart_of_accs
         if acn.parent:
+            self.listener.atree_update_beg(acn)
+            self.listener.atree_update_beg(acn.parent)
             acn.parent.children.remove(acn)
+            self.listener.atree_update_end(acn.parent)
             acn.parent = new_parent_node
+            self.listener.atree_update_beg(acn.parent)
             acn.parent.append_child(acn)
+            self.listener.atree_update_end(acn.parent)
+            self.listener.atree_update_end(acn)
         else:
             raise ValueError(f"Attempt to move root node.")
 
@@ -169,8 +193,8 @@ class AccountingSystem:
         if not coa_name:
             chart_of_accs = self.coa
         else:
-            chart_of_accs = self.charts_of_accounts[coa_name]      
-        
+            chart_of_accs = self.charts_of_accounts[coa_name]
+
         node_to_del = chart_of_accs.get_node(account_tag)
 
         has_posts = False
@@ -181,19 +205,30 @@ class AccountingSystem:
             raise ValueError('Cannot delete node containing account entries')
         if not node_to_del.parent:
             raise ValueError('Cannot delete root node. Use "delete chart-of-accounts" command to do so.')
+        self.listener.atree_delete_beg(node_to_del)
+        self.listener.atree_update_beg(node_to_del.parent)
         node_to_del.parent.children.remove(node_to_del)
-        
+        self.listener.atree_update_end(node_to_del.parent)
+        self.listener.atree_delete_end(node_to_del)
+
+    def refresh_node_tag(self, old_tag: str, node: AccountTree):
+        self.listener.atree_update_beg(node.parent)
+        node.parent.refresh_child_tag(old_tag=old_tag)
+        self.listener.atree_update_end(node.parent)
+
     def add_journal(self, tag: str, fields_definition: dict):
 
         class NewJournal(Journal):
             def initialize_fields(self, journal_entry):
                 return fields_definition.copy()
-        
+
         journal = self.journals.get(tag, None)
         if journal:
             raise ValueError(f"Journal '{tag}' already exist")
+        self.listener.journal_create_beg(tag)
         new_journal = NewJournal(tag, self.general_ledger)
         self.journals[tag] = new_journal
+        self.listener.journal_create_end(new_journal)
 
     def get_journal(self, tag: str) -> Journal:
         journal = self.journals.get(tag, None)
@@ -205,15 +240,22 @@ class AccountingSystem:
         journal = self.get_journal(tag)
         if journal.journal_entries:
             raise ValueError(f"Journal '{tag}' is not empty. Delete is not possible.")
+        self.listener.account_delete_beg(journal)
         del self.journals[tag]
+        self.listener.journal_delete_end(journal)
 
     def new_journal_entry(self, journal_tag: str):
         journal = self.get_journal(journal_tag)
-        return JournalEntry(journal)
-
+        self.listener.jentry_create_beg(journal_tag)
+        je = JournalEntry(journal)
+        self.listener.jentry_create_end(je)
+        return je
+    
     def add_journal_entry(self, new_journal_entry):
         journal = new_journal_entry.journal
+        self.listener.journal_update_beg(journal)
         journal.journal_entries.insert_right(new_journal_entry)
+        self.listener.journal_update_end(journal)
 
     def get_journal_entry(self, journal_tag: str = None, *, sid: str = None, guid: str = None):
         if sid and guid:
@@ -244,7 +286,7 @@ class AccountingSystem:
                 if result:
                     break
         return result
-    
+
     def match_journal_entries_gen(self, date: str, desc: str, ref: str, journal_tag: str, sids: list, state: str, reading_order: str, limit: int = 1000):
 
         def match(je, date:str, desc:str, ref:str, sids):
@@ -258,7 +300,7 @@ class AccountingSystem:
             if ref and ref not in je.reference:
                 return False
             return True
-            
+
         if state == 'ALL':
             posted = True
             unposted = True
@@ -304,10 +346,11 @@ class AccountingSystem:
 
     def post_journal_entry(self, journal_entry):
         if journal_entry.can_post_this():
+            
             journal_entry.post_this()
         else:
             raise ValueError('Posting error')
-        
+
     def bulkpost_journal_entries(self, journal_tag: str, *, sids: list):
         journal = self.get_journal(journal_tag)
         journal_entries = []
@@ -317,7 +360,7 @@ class AccountingSystem:
         journal.post_these(journal_entries)
 
     def bulk_cancel_journal_entries(self, journal_tag: str, *, sids: list, method="STORNO") -> list:
-        
+
         def cancel_account_record(account_record: AccountRecord, method: str):
             if method == "STORNO":
                 # negate account amount
@@ -338,8 +381,8 @@ class AccountingSystem:
                                 post=None
                             )
             raise ValueError()
-            
-        
+
+
         journal_entries = []
         for je_sid in sids:
             je = self.get_journal_entry(journal_tag, sid=je_sid)
@@ -353,7 +396,7 @@ class AccountingSystem:
                     wrong_state_entries.append(SID.print_form(je_to_cancel.sid))
             if wrong_state_entries:
                 raise ValueError(f'Cancel method "REMOVE" cannot be used for posted entry(-ies) {", ".join(wrong_state_entries)}')
-        
+
         wrong_state_entries = []
         for je_to_cancel in journal_entries:
             if je_to_cancel.reference:
@@ -383,7 +426,7 @@ class AccountingSystem:
                 je_to_cancel.reference = old_je_ref
                 cancel_entry.reference = f'Cancels j/e {SID.print_form(je_to_cancel.sid)}'
                 cancel_entry.description = f'{method} entry -> {je_to_cancel.description}'
-                for name, value in cancel_entry.fields.items():  
+                for name, value in cancel_entry.fields.items():
                     if isinstance(value, AccountRecord):
                         c = cancel_account_record(value, method)
                         cancel_entry.fields[name] = c
@@ -444,7 +487,7 @@ def setup_tiny_accounting_system() -> AccountingSystem:
                 'Cash': AccountRecord(accsys.accounts["110"], 0, AccountSide.Dr, journal_entry, None),
                 'Sale': AccountRecord(accsys.accounts["400"], 0, AccountSide.Cr, journal_entry, None),
                 'Tax': AccountRecord(accsys.accounts["270"], 0, AccountSide.Cr, journal_entry, None),
-            }  
+            }
     sale_journal = SaleJournal("SJ", "Sale Journal", ledger=accsys.general_ledger)
     class PurchaseJournal(Journal):
 
@@ -516,7 +559,6 @@ def empty_accounting_system() -> AccountingSystem:
     accsys.accounts = {
             # '100': Account('100', accsys.general_ledger, accsys.currencies["PLN"], "Receivables"),
     }
-
     # class SaleJournal(Journal):
 
     #     def initialize_fields(self, journal_entry):
@@ -524,7 +566,7 @@ def empty_accounting_system() -> AccountingSystem:
     #             'Cash': AccountRecord(accsys.accounts["110"], 0, AccountSide.Dr, journal_entry, None),
     #             'Sale': AccountRecord(accsys.accounts["400"], 0, AccountSide.Cr, journal_entry, None),
     #             'Tax': AccountRecord(accsys.accounts["270"], 0, AccountSide.Cr, journal_entry, None),
-    #         }  
+    #         }
     # sale_journal = SaleJournal("SJ", "Sale Journal", ledger=accsys.general_ledger)
     # class PurchaseJournal(Journal):
 

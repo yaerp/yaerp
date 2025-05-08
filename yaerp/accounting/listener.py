@@ -1,181 +1,176 @@
-class AccountingBaseListener:
+class Listener:
 
-    # JOURNAL ENTRY (JE)
+    # ACCOUNT
 
-    def beginJournalEntry_create(self, ctx):
+    def account_create_beg(self, ctx):
         pass
 
-    def endJournalEntry_create(self, ctx):
+    def account_create_end(self, ctx):
         pass
 
-    def beginJournalEntry_change(self, ctx):
+    def account_update_beg(self, ctx):
         pass
 
-    def endJournalEntry_change(self, ctx):
+    def account_update_end(self, ctx):
         pass
 
-    def beginJournalEntry_change_field(self, ctx):
+    def account_delete_beg(self, ctx):
         pass
 
-    def endJournalEntry_change_field(self, ctx):
+    def account_delete_end(self, ctx):
         pass
 
-    def beginJournalEntry_put_to_journal(self, ctx):
+    # ACCOUNT TREE (Chart of Accounts)
+
+    def atree_create_beg(self, ctx):
         pass
 
-    def endJournalEntry_put_to_journal(self, ctx):
+    def atree_create_end(self, ctx):
         pass
 
-    def beginJournalEntry_del_from_journal(self, ctx):
+    def atree_add_beg(self, ctx):
         pass
 
-    def endJournalEntry_del_from_journal(self, ctx):
+    def atree_add_end(self, ctx):
         pass
 
-    def beginJournalEntry_post(self, ctx):
+    def atree_update_beg(self, ctx):
         pass
 
-    def endJournalEntry_post(self, ctx):
+    def atree_update_end(self, ctx):
         pass
 
-    def beginJournalEntry_cancel(self, ctx):
+    def atree_delete_beg(self, ctx):
         pass
 
-    def endJournalEntry_cancel(self, ctx):
+    def atree_delete_end(self, ctx):
         pass
 
-    # ACCOUNT (ac)
+    # JOURNAL
 
-    def beginAccount_create(self, ctx):
+    def journal_create_beg(self, ctx):
         pass
 
-    def endAccount_create(self, ctx):
+    def journal_create_end(self, ctx):
         pass
 
-    def beginAccount_update(self, ctx):
+    def journal_update_beg(self, ctx):
         pass
 
-    def endAccount_update(self, ctx):
+    def journal_update_end(self, ctx):
         pass
 
-    def beginAccount_read(self, ctx):
+    def journal_delete_beg(self, ctx):
         pass
 
-    def endAccount_read(self, ctx):
+    def journal_delete_end(self, ctx):
         pass
 
-    # JOURNAL (j)
-
-    def beginJournal_create(self, ctx):
+    def journal_bulk_post_beg(self, ctx):
         pass
 
-    def endJournal_create(self, ctx):
+    def journal_bulk_post_end(self, ctx):
+        pass
+    # JOURNAL ENTRY
+
+    def jentry_create_beg(self, ctx):
         pass
 
-    def beginJournal_update(self, ctx):
+    def jentry_create_end(self, ctx):
         pass
 
-    def endJournal_update(self, ctx):
+    def jentry_add_date_field_beg(self, ctx):
         pass
 
-    def beginJournal_read(self, ctx):
+    def jentry_add_date_field_end(self, ctx):
         pass
 
-    def endJournal_read(self, ctx):
+    def jentry_add_desc_field_beg(self, ctx):
         pass
 
-    # GENERAL LEDGER (gl)
-
-    def beginGeneralLedger_account_record_insert(self, ctx):
+    def jentry_add_desc_field_end(self, ctx):
         pass
 
-    def endGeneralLedger_account_record_insert(self, ctx):
+    def jentry_add_ref_field_end(self, ctx):
         pass
 
-    def beginGeneralLedger_account_record_remove(self, ctx):
+    def jentry_add_ref_field_beg(self, ctx):
         pass
 
-    def endGeneralLedger_account_record_remove(self, ctx):
+    def jentry_add_ref_field_end(self, ctx):
         pass
 
-    def beginGeneralLedger_account_record_post(self, ctx):
+    def jentry_add_info_field_beg(self, ctx):         # filling Info field 
         pass
 
-    def endGeneralLedger_account_record_post(self, ctx):
+    def jentry_add_info_field_end(self, ctx):
         pass
 
-    def beginGeneralLedger_register_account(self, ctx):
+    def jentry_add_record_field_beg(self, ctx):      # filling Debit or Credit field
         pass
 
-    def endGeneralLedger_register_account(self, ctx):
+    def jentry_add_record_field_end(self, ctx):
         pass
 
-    def beginGeneralLedger_register_journal(self, ctx):
+    def jentry_put_beg(self, ctx):              # storing entry into the journal
         pass
 
-    def endGeneralLedger_register_journal(self, ctx):
+    def jentry_put_end(self, ctx):
         pass
 
-    def beginGeneralLedger_register_post(self, ctx):
+    def jentry_del_beg(self, ctx):
         pass
 
-    def endGeneralLedger_register_post(self, ctx):
+    def jentry_del_end(self, ctx):
         pass
 
-    # LEDGER (l)
-
-    def beginLedger_account_record_insert(self, ctx):
+    def jentry_single_post_beg(self, ctx):
         pass
 
-    def endLedger_account_record_insert(self, ctx):
+    def jentry_single_post_end(self, ctx):
         pass
 
-    def beginLedger_account_record_remove(self, ctx):
+    def jentry_copy_beg(self, ctx):
         pass
 
-    def endLedger_account_record_remove(self, ctx):
+    def jentry_copy_end(self, ctx):
         pass
 
-    def beginLedger_account_record_change(self, ctx):
+
+    # LEDGER
+
+    def ledger_create_beg(self, ctx):
         pass
 
-    def endLedger_account_record_change(self, ctx):
+    def ledger_create_end(self, ctx):
         pass
 
-    def beginLedger_register_account(self, ctx):
+    def ledger_register_account_beg(self, ctx):
         pass
 
-    def endLedger_register_account(self, ctx):
+    def ledger_register_account_end(self, ctx):
         pass
 
-    def beginLedger_register_journal(self, ctx):
+    def ledger_unregister_account_beg(self, ctx):
         pass
 
-    def endLedger_register_journal(self, ctx):
+    def ledger_unregister_account_end(self, ctx):
         pass
 
-    def beginLedger_register_post(self, ctx):
+    def ledger_register_journal_beg(self, ctx):
         pass
 
-    def endLedger_register_post(self, ctx):
+    def ledger_register_journal_end(self, ctx):
         pass
 
-    # ACCOUNT TREE (at)
-
-    def beginAccountTree_create(self, ctx):
+    def ledger_unregister_journal_beg(self, ctx):
         pass
 
-    def endAccountTree_create(self, ctx):
+    def ledger_unregister_journal_end(self, ctx):
         pass
 
-    def beginAccountTree_append_child(self, ctx):
+    def ledger_post_jentry_beg(self, ctx):
         pass
 
-    def endAccountTree_append_child(self, ctx):
-        pass
-
-    def beginAccountTree_add_marks(self, ctx):
-        pass
-
-    def endAccountTree_add_marks(self, ctx):
+    def ledger_post_jentry_end(self, ctx):
         pass

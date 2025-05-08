@@ -337,14 +337,16 @@ class AccountTree():
         txt = []
         ac = self.account
         if ac:
-            txt.append(f'{"/" + ac.tag + "/":<10} ')
-            txt.append(f'{ac.name + " ":.<26}.')
+            acc_label = f'/{ac.tag}/  {ac.name}'
+            txt.append(f'{acc_label:.<44}')
+            # txt.append(f'{"/" + ac.tag + "/":<12} ')
+            # txt.append(f'{ac.name + " ":.<32}.')
             sum_dr = ac.currency.raw2amount(self.get_debit_sum())
             sum_cr = ac.currency.raw2amount(self.get_credit_sum())
-            sum_bl = ac.currency.raw2amount(self.get_balance_sum())
-            txt.append(f'{" " + sum_dr:.>10}  ')
-            txt.append(f'{" " + sum_cr:.>10}  ')
-            txt.append(f'{" " + sum_bl + " " + ac.currency.symbol:.>15}')
+            # sum_bl = ac.currency.raw2amount(self.get_balance_sum())
+            txt.append(f'{" " + sum_dr:.>14}  ')
+            txt.append(f'{" " + sum_cr:.>14}  ')
+            # txt.append(f'{" " + sum_bl + " " + ac.currency.symbol:.>15}')
         else:
             txt.append(f' tree ')
         return ''.join(txt)

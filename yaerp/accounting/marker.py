@@ -30,7 +30,7 @@ class Assets(Mark):
     RECEIVABLES = 100       # naleznosci u klientow
     CASH = 110
     BANK = 120    
-    TAX_RECEIVABLES = 130   # zobowiazania podatkowe
+    TAX_RECEIVABLES = 130   # zwroty i odliczenia podatkowe
     STOCK = 160             # asortyment
     STOCK_ADJUSTMENT = 169
     EQUIPMENT = 170         # środki trwałe
@@ -42,7 +42,7 @@ class Assets(Mark):
 class Liabilities(Mark):
     """ Liability accounts """
     PAYABLES = 200          # zobowiazania wobec dostawcow
-    TAX_PAYABLES = 230      # naleznosci podatkowe
+    TAX_PAYABLES = 230      # zobowiązania podatkowe
     ACCRUED_EXPENSES = 260  # rozl. miedzyokresowe bierne
     DEFERRED_INCOME = 261   # rozl. miedzyokresowe bierne
 
@@ -69,6 +69,7 @@ class Expenses(Mark):
     DEPRECIATION_EXPENSE = 560
     OTHER_EXPENSE = 580
 
+
 class Clearing(Mark):
     ''' Clearing Accounts (track and reconcile transactions in process) '''
 
@@ -94,17 +95,17 @@ class Clearing(Mark):
     Usually used for tracking the approved invoices or bills from the contractor that are not yet paid.
     Example:
     - 1. new project just started, 
-    - 2. the $100 bill received from the contractor
+    - 2. the $100 bill received from the project contractor
         - Dr( project a/c ) Cr( this )
     - 3. the first payment, $150 was sent to the contractor
         - Dr( this ) Cr( bank a/c )    
-    - 4. the $200 invoice received from the contractor
+    - 4. the $200 invoice received
         - Dr( project a/c ) Cr( this )
-    - 5. the $12 final bill received from the contractor
+    - 5. the $12 final bill received
         - Dr( project a/c ) Cr( this )
-    - 6. the final payment, $162 was send to the contractor
+    - 6. the final payment, $162 was send just after the project contractor finnished the job
         - Dr( this ) Cr( bank a/c )
-    - 7. the clearing a/c (this) is balanced and the project should be ready
+    - 7. the clearing a/c (this) is balanced and project can be closed
     '''
     
     PURCHASE_CLEARING_ACCOUNT = 973  # rozliczenie zakupu
@@ -148,6 +149,7 @@ class Clearing(Mark):
     # ISSUED_NOT_INVOICED = 152  # rozliczenie sprzedazy
     # ''' Sell Clearings:\n
     # Goods/Services issued to the Customer but not invoiced '''
+
 
 class Maintenance(Mark):
     """

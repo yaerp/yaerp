@@ -9,6 +9,7 @@ from cmd2 import CommandSet, CompletionMode, with_argparser, with_category, with
 from acc_sys import empty_accounting_system, setup_tiny_accounting_system
 from yaerp.accounting.account3 import AccountRecord, AccountSide
 from yaerp.accounting.journal3 import Journal, JournalEntry
+from yaerp.accounting.listener import Listener
 from yaerp.accounting.marker import Marker
 from yaerp.accounting.reports.t_account import render_journal_entries2, render_layout
 from yaerp.accounting.tree3 import AccountTree
@@ -134,11 +135,20 @@ class LoadableChartsOfAccounts(CommandSet):
     @cmd2.as_subcommand_to('list', 'charts-of-accounts', list_coa)
     def list_coa(self, _: argparse.Namespace):
         txt = []
-        txt.append(f'{" [Tag]":<10} {" [Name]":<26} {"[Sum Dr]":>10}  {"[Sum Cr]":>10}   {"[Sum Balance]":>14}')
+        txt.append('')
+        txt.append(f'{"----  CHART OF ACCOUNTS  ----":^78}')
+
+        # root_dr = accounting_system.coa.get_debit_sum()
+        # root_cr = accounting_system.coa.get_credit_sum()
+        
+        txt.append(f'{" ":<44} {"[Sum Dr]":>14}  {"[Sum Cr]":>14}')
+        
+        # txt.append(f'{"/":<12} {"<Chart of Accounts>":<32} {root_dr:>14}  {root_cr:>14}')
         for node in accounting_system.coa.get_internals_gen():
             path = node.get_node_path()
             indent = ' '*(len(path)-2)
             txt.append(f'{indent}{node.short_str()}')
+        txt.append('')
         self._cmd.poutput('\n'.join(txt))
 
 @with_default_category('Journal')
@@ -296,7 +306,7 @@ class LoadableAccounts(CommandSet):
     @cmd2.as_subcommand_to('update', 'account', update_account_parser)
     def update_account(self, ns: argparse.Namespace):
 
-        if ns.new_tag: # at the very end change tag if so
+        if ns.new_tag:
             if ns.new_tag in accounting_system.accounts.keys():
                 raise ValueError(f'New tag found in existing Account "{ns.new_tag}"')
  
@@ -315,7 +325,8 @@ class LoadableAccounts(CommandSet):
                 raise ValueError(f"Account and parent account are the same")
             if ac_tree_parent in ac_tree.get_internals_gen():
                 raise ValueError(f'The account "{ns.new_parent}" planned to be a parent is currently descendant of account "{ac_tree.account.tag}" ')
-        
+        else:
+            ac_tree_parent = accounting_system.coa.get_root_node()
         # run command
         interactive_print(self._cmd, "CURRENT VERSION:\n")
         interactive_print(self._cmd, ac_tree.full_str())
@@ -355,11 +366,14 @@ class LoadableAccounts(CommandSet):
                 internal_nodes.marker.reduce(marks_to_really_del)
 
         if ns.new_parent:
-            if ns.new_parent == '#':
-                ac_tree.parent = None
-            else:
-                ac_tree.parent = ac_tree_parent
-            
+            ac_tree.parent.remove_child(ac_tree)
+            # if ns.new_parent == '#':
+            #     ac_tree.parent = accounting_system.coa.get_root_node()
+            # else:
+            #     ac_tree.parent = ac_tree_parent
+            ac_tree.parent = ac_tree_parent
+            ac_tree.parent.append_child(ac_tree)
+
         if ns.new_tag: # at the very end change tag if so
             old_tag = ac.tag
 
@@ -371,7 +385,7 @@ class LoadableAccounts(CommandSet):
             accounting_system.accounts[ns.new_tag] = ac
             ac = accounting_system.get_account(ns.new_tag)
             del accounting_system.accounts[old_tag]
-
+            accounting_system.refresh_node_tag(old_tag, acc_node)
             acc_node.parent.refresh_child_tag(old_tag)
 
  
@@ -466,9 +480,6 @@ class LoadableAccounts(CommandSet):
 class LoadableEntries(CommandSet):
     def __init__(self):
         super().__init__()
-
-    # def do_entriescommand(self, _: cmd2.Statement):
-    #     self._cmd.poutput('Ent..')
 
     entry_parser = cmd2.Cmd2ArgumentParser()
     entry_parser.add_argument('style', choices=['q', 'd'])
